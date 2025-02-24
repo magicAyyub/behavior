@@ -1,5 +1,5 @@
 
-# Get Your Trip Backend
+# Behavior Backend
 
 Bienvenue dans la partie backend, elle utilise **FastAPI**, **Docker**, et **Poetry** pour une gestion simplifiée des dépendances et de l'environnement. Le script `setup` est conçu pour automatiser la configuration initiale.
 
@@ -58,12 +58,6 @@ Si vous avez exécuté le script `setup`, les conteneurs Docker sont déjà cons
 http://localhost:8000
 ```
 
-L'interface de manipulation de la base de données MongoDB (Mongo express) est accessible à l'adresse suivante :
-
-```
-http://localhost:8081
-```
-
 Si vous souhaitez relancer les conteneurs manuellement, utilisez :
 
 ```bash
@@ -106,7 +100,7 @@ backend/
 ├── src/                # Code source principal
 │   ├── main.py         # Point d'entrée de l'application FastAPI
 │   ├── app/            # Modules FastAPI (routes, modèles, etc.)
-│   ├── utils/          # Utilitaires (connexion MongoDB, gestion .env)
+│   ├── utils/          # Utilitaires (connexion Postgres, gestion .env)
 │   └── setup_docker.py # Script de configuration automatique
 │   └── .env            # Fichier contenant les variables d'environnement (généré automatiquement)
 ├── Dockerfile          # Instructions pour construire l'image Docker
@@ -120,11 +114,11 @@ backend/
 Le fichier `.env` est généré automatiquement par le script `setup`. Voici un exemple des variables qu'il contient :
 
 ```
-MONGO_USER=your_mongodb_user
-MONGO_PASSWORD=your_mongodb_password
-MONGO_HOST=mongodb
-MONGO_PORT=27017
-MONGO_DB=datalake
+DB_USER=admin
+DB_PASSWORD=mypassword
+DB_HOST=db
+DB_PORT=5432
+DB_NAME=data
 ```
 
 Vous pouvez modifier ces valeurs si nécessaire.
@@ -162,5 +156,5 @@ En cas de problème, les logs des conteneurs Docker peuvent vous aider à identi
 poetry run logs
 ```
 
-Si le problème persiste, veuillez contacter [Ayouba](https://github.com/magicAyyub)ou ouvrir une issue sur le dépôt GitHub.
+Si le problème persiste, veuillez contacter [magicAyyub](https://github.com/magicAyyub)ou ouvrir une issue sur le dépôt GitHub.
 

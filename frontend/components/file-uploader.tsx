@@ -20,11 +20,15 @@ export function FileUploader() {
   const [progress, setProgress] = useState(0)
   const [combinedData, setCombinedData] = useState<any[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [processingStatus, setProcessingStatus] = useState<string>("")
+  const [processedFiles, setProcessedFiles] = useState<Array<{ fileName: string; data: any[] }>>([])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
       "application/vnd.ms-excel": [".xls"],
+      "text/csv": [".csv"],
+      "application/csv": [".csv"],
     },
     onDrop: (acceptedFiles) => {
       setError(null)
@@ -48,7 +52,7 @@ export function FileUploader() {
 
   const processFiles = async () => {
     if (files.length === 0) {
-      setError("Veuillez sélectionner au moins un fichier Excel")
+      setError("Veuillez sélectionner au moins un fichier Excel ou CSV")
       return
     }
 
@@ -58,18 +62,33 @@ export function FileUploader() {
     setError(null)
 
     try {
-      let allData: any[] = []
+      const processedData = []
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i].file
-        const data = await readExcelFile(file)
-        allData = [...allData, ...data]
+        setProcessingStatus(`Traitement du fichier ${i + 1}/${files.length}: ${file.name}`)
+
+        // Déterminer si c'est un CSV ou un Excel
+        const isCSV = file.name.toLowerCase().endsWith(".csv")
+
+        // Traiter le fichier selon son type
+        const data = isCSV ? await readCSVFile(file) : await readExcelFile(file)
+
+        // Stocker les données avec le nom du fichier pour le téléchargement ultérieur
+        processedData.push({
+          fileName: file.name,
+          data: data,
+        })
+
+        // Mettre à jour la progression
         setProgress(((i + 1) / files.length) * 100)
       }
 
-      setCombinedData(allData)
+      setProcessedFiles(processedData)
+      setProcessingStatus("Traitement terminé")
     } catch (err) {
       setError(`Erreur lors du traitement des fichiers: ${err instanceof Error ? err.message : String(err)}`)
+      setProcessingStatus("Une erreur est survenue")
     } finally {
       setProcessing(false)
     }
@@ -100,14 +119,139 @@ export function FileUploader() {
     })
   }
 
-  const downloadCSV = () => {
-    if (!combinedData || combinedData.length === 0) return
+  const readCSVFile = (file: File): Promise<any[]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
 
-    const worksheet = XLSX.utils.json_to_sheet(combinedData)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Données Combinées")
+      reader.onload = (e) => {
+        try {
+          // Utiliser l'encodage Windows-1252 pour les caractères spéciaux
+          const decoder = new TextDecoder("windows-1252")
+          const arrayBuffer = e.target?.result as ArrayBuffer
+          const csvText = decoder.decode(arrayBuffer)
 
-    XLSX.writeFile(workbook, "donnees_combinees.csv", { bookType: "csv" })
+          // Diviser par lignes en tenant compte des possibles retours à la ligne dans les champs
+          const lines = csvText.split(/\r?\n/)
+
+          // Traiter l'en-tête - enlever les guillemets et nettoyer
+          const headers = lines[0].split(";").map((header) => header.trim().replace(/^"?|"?$/g, ""))
+
+          const result = []
+
+          // Traiter chaque ligne
+          for (let i = 1; i < lines.length; i++) {
+            if (!lines[i].trim()) continue
+
+            const values = []
+            let currentValue = ""
+            let insideQuotes = false
+
+            // Parser la ligne caractère par caractère
+            for (let j = 0; j < lines[i].length; j++) {
+              const char = lines[i][j]
+
+              if (char === '"') {
+                if (insideQuotes && lines[i][j + 1] === '"') {
+                  // Double guillemet à l'intérieur d'un champ entre guillemets
+                  currentValue += '"'
+                  j++ // Sauter le prochain guillemet
+                } else {
+                  // Basculer l'état "entre guillemets"
+                  insideQuotes = !insideQuotes
+                }
+              } else if (char === ";" && !insideQuotes) {
+                // Fin du champ si point-virgule hors guillemets
+                values.push(currentValue.trim())
+                currentValue = ""
+              } else {
+                currentValue += char
+              }
+            }
+
+            // Ajouter le dernier champ
+            if (currentValue.trim()) {
+              values.push(currentValue.trim())
+            }
+
+            // Créer l'objet avec les en-têtes
+            const row: Record<string, string> = {}
+            headers.forEach((header, index) => {
+              if (values[index] !== undefined) {
+                // Nettoyer la valeur des guillemets externes
+                const value = values[index].replace(/^"?|"?$/g, "")
+                row[header] = value
+              } else {
+                row[header] = ""
+              }
+            })
+
+            result.push(row)
+          }
+
+          resolve(result)
+        } catch (err) {
+          reject(err)
+        }
+      }
+
+      reader.onerror = (err) => {
+        reject(err)
+      }
+
+      // Lire le fichier comme un ArrayBuffer pour gérer l'encodage
+      reader.readAsArrayBuffer(file)
+    })
+  }
+
+  // Modification de la fonction downloadCSV pour utiliser le point-virgule comme séparateur
+  const downloadCSV = (fileData: { fileName: string; data: any[] }) => {
+    if (!fileData || fileData.data.length === 0) return
+
+    try {
+      // Obtenir les en-têtes
+      const headers = Object.keys(fileData.data[0])
+
+      // Créer le contenu CSV
+      let csvContent = headers.map((header) => `"${header}"`).join(";") + "\n"
+
+      // Ajouter chaque ligne
+      fileData.data.forEach((row) => {
+        const line = headers
+          .map((header) => {
+            const value = row[header] || ""
+            // Entourer de guillemets si nécessaire
+            return value.includes(";") || value.includes('"') || value.includes("\n")
+              ? `"${value.replace(/"/g, '""')}"`
+              : `"${value}"`
+          })
+          .join(";")
+        csvContent += line + "\n"
+      })
+
+      // Créer le blob avec l'encodage Windows-1252
+      const blob = new Blob([new TextEncoder().encode(csvContent)], {
+        type: "text/csv;charset=windows-1252",
+      })
+
+      // Créer le nom du fichier
+      const originalName = fileData.fileName
+      const extension = originalName.lastIndexOf(".")
+      const baseName = extension !== -1 ? originalName.substring(0, extension) : originalName
+      const newFileName = `${baseName}_mapped.csv`
+
+      // Télécharger le fichier
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.setAttribute("download", newFileName)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error("Erreur lors de la création du CSV:", error)
+      setError(`Erreur lors de la création du fichier CSV: ${error instanceof Error ? error.message : String(error)}`)
+    }
   }
 
   return (
@@ -159,7 +303,7 @@ export function FileUploader() {
       {processing && (
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span>Traitement en cours...</span>
+            <span>{processingStatus}</span>
             <span>{Math.round(progress)}%</span>
           </div>
           <Progress value={progress} />
@@ -172,11 +316,24 @@ export function FileUploader() {
         </Alert>
       )}
 
-      {combinedData && combinedData.length > 0 && (
+      {processedFiles && processedFiles.length > 0 && (
         <div className="space-y-4">
-          <DataPreview data={combinedData} />
-          <div className="flex justify-end">
-            <Button onClick={downloadCSV}>Télécharger le CSV</Button>
+          <h3 className="text-lg font-medium">Fichiers traités ({processedFiles.length})</h3>
+          <div className="grid gap-4">
+            {processedFiles.map((fileData, index) => (
+              <div key={index} className="border rounded-md p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-medium">{fileData.fileName}</h4>
+                  <Button onClick={() => downloadCSV(fileData)}>
+                    Télécharger {fileData.fileName.substring(0, fileData.fileName.lastIndexOf("."))}_mapped.csv
+                  </Button>
+                </div>
+                <DataPreview data={fileData.data.slice(0, 5)} />
+                <p className="text-sm text-muted-foreground mt-2">
+                  {fileData.data.length} lignes au total. Aperçu des 5 premières lignes.
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       )}

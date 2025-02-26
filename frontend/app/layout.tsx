@@ -5,9 +5,10 @@ import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"] })
 
+// Mettre à jour les métadonnées
 export const metadata: Metadata = {
-  title: "Outil de Mapping Excel",
-  description: "Combinez plusieurs fichiers Excel en un seul fichier CSV complet",
+  title: "Outil de Mapping Excel et CSV",
+  description: "Traitez vos fichiers Excel et CSV pour obtenir des fichiers CSV propres et formatés",
 }
 
 export default function RootLayout({

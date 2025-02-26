@@ -35,7 +35,9 @@ export function DataPreview({ data }: DataPreviewProps) {
             <TableHeader>
               <TableRow>
                 {headers.map((header, index) => (
-                  <TableHead key={index}>{header}</TableHead>
+                  <TableHead key={index} className="whitespace-nowrap">
+                    {header}
+                  </TableHead>
                 ))}
               </TableRow>
             </TableHeader>
@@ -43,7 +45,9 @@ export function DataPreview({ data }: DataPreviewProps) {
               {currentPageData.map((row, rowIndex) => (
                 <TableRow key={rowIndex} className={rowIndex % 2 === 0 ? "bg-muted/50" : ""}>
                   {headers.map((header, cellIndex) => (
-                    <TableCell key={cellIndex}>{String(row[header] !== undefined ? row[header] : "")}</TableCell>
+                    <TableCell key={cellIndex} className="max-w-[200px] truncate">
+                      {String(row[header] !== undefined ? row[header] : "")}
+                    </TableCell>
                   ))}
                 </TableRow>
               ))}

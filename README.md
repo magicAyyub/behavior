@@ -1,3 +1,4 @@
 # Behavior
 
-[👉🥋👈](backend/README.md) 
+[Backend](backend/README.md) 
+[Frontend](frontend/README.md)

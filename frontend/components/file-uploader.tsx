@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useDropzone } from "react-dropzone"
 import * as XLSX from "xlsx"
-import { FileIcon, UploadCloudIcon, XIcon } from "lucide-react"
+import { FileIcon, UploadCloudIcon, XIcon, DownloadIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -12,6 +12,38 @@ import { DataPreview } from "@/components/data-preview"
 type FileWithPreview = {
   file: File
   preview: string
+}
+
+// Fonction utilitaire pour formater les dates
+const formatExcelDate = (value: any): string => {
+  // Si c'est déjà une chaîne de caractères, on la retourne telle quelle
+  if (typeof value === "string") return value
+
+  // Si c'est un nombre (timestamp Excel), on le convertit
+  if (typeof value === "number") {
+    try {
+      const date = XLSX.SSF.parse_date_code(value)
+      // Format: YYYY-MM-DD HH:mm:ss ou DD/MM/YYYY HH:mm:ss selon le format d'origine
+      if (date) {
+        const year = date.y
+        const month = String(date.m).padStart(2, "0")
+        const day = String(date.d).padStart(2, "0")
+        const hours = String(date.H).padStart(2, "0")
+        const minutes = String(date.M).padStart(2, "0")
+        const seconds = String(date.S).padStart(2, "0")
+
+        // On vérifie si la valeur originale contenait un slash
+        if (value.toString().includes("/")) {
+          return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`
+        }
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+      }
+    } catch (e) {
+      console.warn("Erreur de conversion de date:", e)
+    }
+  }
+
+  return value?.toString() || ""
 }
 
 export function FileUploader() {
@@ -101,11 +133,36 @@ export function FileUploader() {
       reader.onload = (e) => {
         try {
           const data = e.target?.result
-          const workbook = XLSX.read(data, { type: "binary" })
+          const workbook = XLSX.read(data, { type: "binary", cellDates: true })
           const sheetName = workbook.SheetNames[0]
           const worksheet = workbook.Sheets[sheetName]
-          const json = XLSX.utils.sheet_to_json(worksheet)
-          resolve(json)
+
+          // Convertir en JSON avec des options spécifiques
+          const json = XLSX.utils.sheet_to_json(worksheet, {
+            raw: false,
+            dateNF: "yyyy-mm-dd hh:mm:ss",
+          })
+
+          // Nettoyer et formater les données
+          const cleanedData = json.map((row) => {
+            const cleanedRow: Record<string, any> = {}
+
+            Object.entries(row).forEach(([key, value]) => {
+              // Remplacer __EMPTY par "ID LIN" si nécessaire
+              const cleanKey = key === "__EMPTY" ? "ID LIN" : key
+
+              // Formater les dates si nécessaire
+              if (key === "Création" || key === "Mise à jour") {
+                cleanedRow[cleanKey] = formatExcelDate(value)
+              } else {
+                cleanedRow[cleanKey] = value
+              }
+            })
+
+            return cleanedRow
+          })
+
+          resolve(cleanedData)
         } catch (err) {
           reject(err)
         }
@@ -218,7 +275,8 @@ export function FileUploader() {
       fileData.data.forEach((row) => {
         const line = headers
           .map((header) => {
-            const value = row[header] || ""
+            // Convertir la valeur en chaîne de caractères
+            const value = (row[header] ?? "").toString()
             // Entourer de guillemets si nécessaire
             return value.includes(";") || value.includes('"') || value.includes("\n")
               ? `"${value.replace(/"/g, '""')}"`
@@ -229,7 +287,8 @@ export function FileUploader() {
       })
 
       // Créer le blob avec l'encodage Windows-1252
-      const blob = new Blob([new TextEncoder().encode(csvContent)], {
+      const encoder = new TextEncoder()
+      const blob = new Blob([encoder.encode(csvContent)], {
         type: "text/csv;charset=windows-1252",
       })
 
@@ -324,8 +383,13 @@ export function FileUploader() {
               <div key={index} className="border rounded-md p-4">
                 <div className="flex items-center justify-between mb-4">
                   <h4 className="font-medium">{fileData.fileName}</h4>
-                  <Button onClick={() => downloadCSV(fileData)}>
-                    Télécharger {fileData.fileName.substring(0, fileData.fileName.lastIndexOf("."))}_mapped.csv
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => downloadCSV(fileData)}
+                    title={`Télécharger ${fileData.fileName.substring(0, fileData.fileName.lastIndexOf("."))}_mapped.csv`}
+                  >
+                    <DownloadIcon className="h-4 w-4" />
                   </Button>
                 </div>
                 <DataPreview data={fileData.data.slice(0, 5)} />

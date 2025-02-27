@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useDropzone } from "react-dropzone"
 import * as XLSX from "xlsx"
-import { FileIcon, UploadCloudIcon, XIcon, DownloadIcon, AlertTriangleIcon } from "lucide-react"
+import { FileIcon, UploadCloudIcon, XIcon, DownloadIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -23,7 +23,7 @@ type FileValidationError = {
   }[]
 }
 
-// Structure attendue des colonnes
+// Structure attendue des colonnes dans l'ordre
 const EXPECTED_COLUMNS = [
   "Référence",
   "ID LIN",
@@ -43,98 +43,83 @@ const EXPECTED_COLUMNS = [
   "RUO",
 ]
 
-// Fonction pour valider le format des données
-const validateDataFormat = (data: any[]): FileValidationError["errors"] => {
-  const errors: FileValidationError["errors"] = []
-
-  if (data.length === 0) return errors
-
-  const columns = Object.keys(data[0])
-
-  // Vérifier uniquement les colonnes supplémentaires
-  columns.forEach((col) => {
-    if (!EXPECTED_COLUMNS.includes(col)) {
-      errors.push({
-        type: "extra_column",
-        column: col,
-        message: `Colonne supplémentaire détectée : "${col}"`,
-      })
-    }
-  })
-
-  return errors
-}
-
 // Fonction utilitaire pour formater les grands nombres
 const formatLargeNumber = (value: any): string => {
   if (typeof value === "number") {
-    // Convertir en chaîne sans notation scientifique
     return value.toLocaleString("fullwide", { useGrouping: false })
   }
   return value?.toString() || ""
 }
 
 // Fonction utilitaire pour formater les dates de manière uniforme
-const formatDate = (value: any): string => {
+const formatDate = (value: any, timeValue?: string): string => {
   if (!value) return ""
 
   try {
-    // Si c'est déjà au bon format (DD/MM/YYYY HH:mm:ss), on le garde
-    if (typeof value === "string" && /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/.test(value)) {
-      return value
+    const dateStr = value
+    const timeStr = timeValue || ""
+
+    // Si la date est au format "YYYY-MM-DD HH:mm:ss"
+    if (typeof value === "string" && value.includes("-")) {
+      const date = new Date(value)
+      if (!isNaN(date.getTime())) {
+        const day = String(date.getDate()).padStart(2, "0")
+        const month = String(date.getMonth() + 1).padStart(2, "0")
+        const year = date.getFullYear()
+        const hours = String(date.getHours()).padStart(2, "0")
+        const minutes = String(date.getMinutes()).padStart(2, "0")
+        const seconds = String(date.getSeconds()).padStart(2, "0")
+        return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`
+      }
     }
 
-    // Créer un objet Date à partir de la valeur
-    const date = new Date(value)
+    // Si la date est au format "jour X mois YYYY"
+    if (typeof value === "string" && value.toLowerCase().includes("mardi")) {
+      const parts = value.split(" ")
+      const day = parts[1]
+      const month = getMonthNumber(parts[2])
+      const year = parts[3]
 
-    // Vérifier si la date est valide
-    if (isNaN(date.getTime())) {
-      return value?.toString() || ""
+      if (timeStr) {
+        // Si nous avons une valeur de temps séparée, l'utiliser
+        const timeParts = timeStr.split(":")
+        if (timeParts.length >= 2) {
+          return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year} ${timeParts[0].padStart(2, "0")}:${timeParts[1].padStart(2, "0")}:${timeParts[2] || "00"}`
+        }
+      }
+
+      return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year} 00:00:00`
     }
 
-    // Formater la date au format désiré
-    const day = String(date.getDate()).padStart(2, "0")
-    const month = String(date.getMonth() + 1).padStart(2, "0")
-    const year = date.getFullYear()
-    const hours = String(date.getHours()).padStart(2, "0")
-    const minutes = String(date.getMinutes()).padStart(2, "0")
-    const seconds = String(date.getSeconds()).padStart(2, "0")
+    // Si c'est déjà au format DD/MM/YYYY HH:mm:ss
+    if (typeof value === "string" && /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}(:\d{2})?$/.test(value)) {
+      return value.includes(":") ? value : `${value}:00`
+    }
 
-    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`
+    return value?.toString() || ""
   } catch (e) {
     console.warn("Erreur de conversion de date:", e)
     return value?.toString() || ""
   }
 }
 
-// Fonction utilitaire pour formater les dates Excel
-const formatExcelDate = (value: any): string => {
-  // Si c'est déjà une chaîne de caractères au bon format, on la retourne
-  if (typeof value === "string") {
-    return formatDate(value)
+// Fonction utilitaire pour convertir le nom du mois en numéro
+const getMonthNumber = (monthName: string): string => {
+  const months: { [key: string]: string } = {
+    janvier: "01",
+    février: "02",
+    mars: "03",
+    avril: "04",
+    mai: "05",
+    juin: "06",
+    juillet: "07",
+    août: "08",
+    septembre: "09",
+    octobre: "10",
+    novembre: "11",
+    décembre: "12",
   }
-
-  // Si c'est un nombre (timestamp Excel), on le convertit
-  if (typeof value === "number") {
-    try {
-      const date = XLSX.SSF.parse_date_code(value)
-      if (date) {
-        const year = date.y
-        const month = String(date.m).padStart(2, "0")
-        const day = String(date.d).padStart(2, "0")
-        const hours = String(date.H).padStart(2, "0")
-        const minutes = String(date.M).padStart(2, "0")
-        const seconds = String(date.S).padStart(2, "0")
-
-        return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`
-      }
-    } catch (e) {
-      console.warn("Erreur de conversion de date Excel:", e)
-    }
-  }
-
-  // Si la conversion Excel échoue, on essaie le formatage standard
-  return formatDate(value)
+  return months[monthName.toLowerCase()] || "01"
 }
 
 export function FileUploader() {
@@ -192,26 +177,13 @@ export function FileUploader() {
         setProcessingStatus(`Traitement du fichier ${i + 1}/${files.length}: ${file.name}`)
 
         try {
-          // Traiter le fichier selon son type
           const isCSV = file.name.toLowerCase().endsWith(".csv")
           const data = isCSV ? await readCSVFile(file) : await readExcelFile(file)
-
-          // Validation simplifiée
-          const errors = validateDataFormat(data)
-          if (errors.length > 0) {
-            newValidationErrors.push({
-              fileName: file.name,
-              errors: errors,
-            })
-          }
 
           processedData.push({
             fileName: file.name,
             data: data,
           })
-
-          // Mettre à jour la progression
-          setProgress(((i + 1) / files.length) * 100)
         } catch (err) {
           console.error("Erreur lors du traitement du fichier:", err)
           newValidationErrors.push({
@@ -224,12 +196,13 @@ export function FileUploader() {
             ],
           })
         }
+
+        setProgress(((i + 1) / files.length) * 100)
       }
 
       setValidationErrors(newValidationErrors)
       setProcessedFiles(processedData)
       setProcessingStatus("Traitement terminé")
-      setProcessing(false)
     } catch (err) {
       setError(`Erreur lors du traitement des fichiers: ${err instanceof Error ? err.message : String(err)}`)
       setProcessingStatus("Une erreur est survenue")
@@ -249,27 +222,52 @@ export function FileUploader() {
           const sheetName = workbook.SheetNames[0]
           const worksheet = workbook.Sheets[sheetName]
 
+          // Obtenir toutes les colonnes présentes dans le fichier
+          const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1")
+          const actualColumns: string[] = []
+
+          // Lire l'en-tête pour obtenir les noms réels des colonnes
+          for (let C = range.s.c; C <= range.e.c; C++) {
+            const cell = worksheet[XLSX.utils.encode_cell({ r: range.s.r, c: C })]
+            if (cell && cell.v) {
+              actualColumns.push(cell.v.toString().trim())
+            }
+          }
+
           // Convertir en JSON avec des options spécifiques
           const json = XLSX.utils.sheet_to_json(worksheet, {
-            raw: true, // Obtenir les valeurs brutes
-            dateNF: "dd/mm/yyyy hh:mm:ss",
+            raw: true,
+            defval: "", // Valeur par défaut pour les cellules vides
           })
 
           // Nettoyer et formater les données
-          const cleanedData = json.map((row) => {
+          const cleanedData = json.map((row: any) => {
             const cleanedRow: Record<string, any> = {}
 
-            Object.entries(row).forEach(([key, value]) => {
-              // Remplacer __EMPTY par "ID LIN" si nécessaire
-              const cleanKey = key === "__EMPTY" ? "ID LIN" : key
+            // Initialiser toutes les colonnes attendues avec des valeurs vides
+            EXPECTED_COLUMNS.forEach((col) => {
+              cleanedRow[col] = ""
+            })
 
-              // Appliquer le formatage approprié selon la colonne
-              if (key === "Création" || key === "Mise à jour") {
-                cleanedRow[cleanKey] = formatDate(value)
-              } else if (key === "ID CCU") {
-                cleanedRow[cleanKey] = formatLargeNumber(value)
-              } else {
-                cleanedRow[cleanKey] = value?.toString() || ""
+            // Traiter les données présentes
+            Object.entries(row).forEach(([key, value]) => {
+              const cleanKey = key.trim()
+
+              // Gérer le cas spécial de la colonne Création avec l'heure séparée
+              if (cleanKey === "Création" && typeof value === "string") {
+                // Chercher une colonne d'heure potentielle
+                const timeValue = row[Object.keys(row).find((k) => k.includes("heure") || k.endsWith(":")) || ""]
+                cleanedRow[cleanKey] = formatDate(value, timeValue)
+              }
+              // Gérer les autres colonnes
+              else if (EXPECTED_COLUMNS.includes(cleanKey)) {
+                if (cleanKey === "ID CCU") {
+                  cleanedRow[cleanKey] = formatLargeNumber(value)
+                } else if (cleanKey === "Mise à jour") {
+                  cleanedRow[cleanKey] = formatDate(value)
+                } else {
+                  cleanedRow[cleanKey] = value?.toString() || ""
+                }
               }
             })
 
@@ -296,20 +294,14 @@ export function FileUploader() {
 
       reader.onload = (e) => {
         try {
-          // Utiliser l'encodage Windows-1252 pour les caractères spéciaux
           const decoder = new TextDecoder("windows-1252")
           const arrayBuffer = e.target?.result as ArrayBuffer
           const csvText = decoder.decode(arrayBuffer)
-
-          // Diviser par lignes en tenant compte des possibles retours à la ligne dans les champs
           const lines = csvText.split(/\r?\n/)
-
-          // Traiter l'en-tête - enlever les guillemets et nettoyer
           const headers = lines[0].split(";").map((header) => header.trim().replace(/^"?|"?$/g, ""))
 
           const result = []
 
-          // Traiter chaque ligne
           for (let i = 1; i < lines.length; i++) {
             if (!lines[i].trim()) continue
 
@@ -317,21 +309,17 @@ export function FileUploader() {
             let currentValue = ""
             let insideQuotes = false
 
-            // Parser la ligne caractère par caractère
             for (let j = 0; j < lines[i].length; j++) {
               const char = lines[i][j]
 
               if (char === '"') {
                 if (insideQuotes && lines[i][j + 1] === '"') {
-                  // Double guillemet à l'intérieur d'un champ entre guillemets
                   currentValue += '"'
-                  j++ // Sauter le prochain guillemet
+                  j++
                 } else {
-                  // Basculer l'état "entre guillemets"
                   insideQuotes = !insideQuotes
                 }
               } else if (char === ";" && !insideQuotes) {
-                // Fin du champ si point-virgule hors guillemets
                 values.push(currentValue.trim())
                 currentValue = ""
               } else {
@@ -339,20 +327,28 @@ export function FileUploader() {
               }
             }
 
-            // Ajouter le dernier champ
             if (currentValue.trim()) {
               values.push(currentValue.trim())
             }
 
-            // Créer l'objet avec les en-têtes
             const row: Record<string, string> = {}
+
+            // Initialiser toutes les colonnes attendues avec des valeurs vides
+            EXPECTED_COLUMNS.forEach((col) => {
+              row[col] = ""
+            })
+
+            // Remplir les valeurs présentes
             headers.forEach((header, index) => {
               if (values[index] !== undefined) {
-                // Nettoyer la valeur des guillemets externes
                 const value = values[index].replace(/^"?|"?$/g, "")
-                row[header] = value
-              } else {
-                row[header] = ""
+                if (header === "ID CCU") {
+                  row[header] = formatLargeNumber(value)
+                } else if (header === "Création" || header === "Mise à jour") {
+                  row[header] = formatDate(value)
+                } else {
+                  row[header] = value
+                }
               }
             })
 
@@ -369,7 +365,6 @@ export function FileUploader() {
         reject(err)
       }
 
-      // Lire le fichier comme un ArrayBuffer pour gérer l'encodage
       reader.readAsArrayBuffer(file)
     })
   }
@@ -378,40 +373,31 @@ export function FileUploader() {
     if (!fileData || fileData.data.length === 0) return
 
     try {
-      // Obtenir les en-têtes
-      const headers = Object.keys(fileData.data[0])
+      // Utiliser l'ordre exact des colonnes attendues
+      const csvContent =
+        EXPECTED_COLUMNS.map((header) => `"${header}"`).join(";") +
+        "\n" +
+        fileData.data
+          .map((row) =>
+            EXPECTED_COLUMNS.map((header) => {
+              const value = (row[header] ?? "").toString()
+              return value.includes(";") || value.includes('"') || value.includes("\n")
+                ? `"${value.replace(/"/g, '""')}"`
+                : `"${value}"`
+            }).join(";"),
+          )
+          .join("\n")
 
-      // Créer le contenu CSV
-      let csvContent = headers.map((header) => `"${header}"`).join(";") + "\n"
-
-      // Ajouter chaque ligne
-      fileData.data.forEach((row) => {
-        const line = headers
-          .map((header) => {
-            // Convertir la valeur en chaîne de caractères
-            const value = (row[header] ?? "").toString()
-            // Entourer de guillemets si nécessaire
-            return value.includes(";") || value.includes('"') || value.includes("\n")
-              ? `"${value.replace(/"/g, '""')}"`
-              : `"${value}"`
-          })
-          .join(";")
-        csvContent += line + "\n"
-      })
-
-      // Créer le blob avec l'encodage Windows-1252
       const encoder = new TextEncoder()
       const blob = new Blob([encoder.encode(csvContent)], {
         type: "text/csv;charset=windows-1252",
       })
 
-      // Créer le nom du fichier
       const originalName = fileData.fileName
       const extension = originalName.lastIndexOf(".")
       const baseName = extension !== -1 ? originalName.substring(0, extension) : originalName
       const newFileName = `${baseName}_mapped.csv`
 
-      // Télécharger le fichier
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement("a")
       link.href = url
@@ -479,26 +465,6 @@ export function FileUploader() {
             <span>{Math.round(progress)}%</span>
           </div>
           <Progress value={progress} />
-        </div>
-      )}
-
-      {validationErrors.length > 0 && (
-        <div className="space-y-4">
-          {validationErrors.map((fileError, index) => (
-            <Alert key={index} variant="destructive" className="flex items-start gap-4">
-              <AlertTriangleIcon className="h-5 w-5 mt-0.5" />
-              <div className="space-y-2 flex-1">
-                <h4 className="font-medium">Problèmes détectés dans {fileError.fileName}</h4>
-                <ul className="list-disc pl-4 space-y-1">
-                  {fileError.errors.map((error, errorIndex) => (
-                    <li key={errorIndex} className="text-sm">
-                      {error.message}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </Alert>
-          ))}
         </div>
       )}
 

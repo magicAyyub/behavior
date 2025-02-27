@@ -226,7 +226,12 @@ export function FileUploader() {
       reader.onload = (e) => {
         try {
           const data = e.target?.result
-          const workbook = XLSX.read(data, { type: "binary", cellDates: true })
+          const workbook = XLSX.read(data, {
+            type: "binary",
+            cellDates: true,
+            cellNF: false,
+            cellText: false,
+          })
           const sheetName = workbook.SheetNames[0]
           const worksheet = workbook.Sheets[sheetName]
 

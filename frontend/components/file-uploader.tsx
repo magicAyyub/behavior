@@ -49,74 +49,20 @@ const validateDataFormat = (data: any[]): FileValidationError["errors"] => {
 
   if (data.length === 0) return errors
 
-  const firstRow = data[0]
-  const columns = Object.keys(firstRow)
+  const columns = Object.keys(data[0])
 
-  // Vérifier les colonnes manquantes
-  EXPECTED_COLUMNS.forEach((expectedCol) => {
-    if (!columns.includes(expectedCol)) {
-      errors.push({
-        type: "missing_column",
-        column: expectedCol,
-        message: `La colonne "${expectedCol}" est manquante`,
-      })
-    }
-  })
-
-  // Vérifier les colonnes supplémentaires
+  // Vérifier uniquement les colonnes supplémentaires
   columns.forEach((col) => {
     if (!EXPECTED_COLUMNS.includes(col)) {
       errors.push({
         type: "extra_column",
         column: col,
-        message: `Colonne supplémentaire non attendue : "${col}"`,
-      })
-    }
-  })
-
-  // Vérifier le format des données dans chaque ligne
-  data.forEach((row, index) => {
-    // Vérifier que ID LIN n'est pas une date
-    if (row["ID LIN"] && isDateString(row["ID LIN"])) {
-      errors.push({
-        type: "invalid_format",
-        column: "ID LIN",
-        message: `La colonne "ID LIN" contient une date à la ligne ${index + 1} : "${row["ID LIN"]}"`,
-      })
-    }
-
-    // Vérifier le format des dates
-    if (row["Création"] && !isValidDateFormat(row["Création"])) {
-      errors.push({
-        type: "invalid_format",
-        column: "Création",
-        message: `Format de date invalide dans la colonne "Création" à la ligne ${index + 1} : "${row["Création"]}"`,
-      })
-    }
-
-    if (row["Mise à jour"] && !isValidDateFormat(row["Mise à jour"])) {
-      errors.push({
-        type: "invalid_format",
-        column: "Mise à jour",
-        message: `Format de date invalide dans la colonne "Mise à jour" à la ligne ${index + 1} : "${row["Mise à jour"]}"`,
+        message: `Colonne supplémentaire détectée : "${col}"`,
       })
     }
   })
 
   return errors
-}
-
-// Fonction pour vérifier si une chaîne ressemble à une date
-const isDateString = (value: string): boolean => {
-  if (!value) return false
-  // Vérifie si la chaîne contient des mots comme "Mon", "Tue", etc. ou "GMT"
-  return /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/.test(value) || value.includes("GMT")
-}
-
-// Fonction pour vérifier le format de date valide (DD/MM/YYYY HH:mm:ss)
-const isValidDateFormat = (value: string): boolean => {
-  if (!value) return true // Permettre les valeurs vides
-  return /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/.test(value)
 }
 
 // Fonction utilitaire pour formater les grands nombres
@@ -243,16 +189,15 @@ export function FileUploader() {
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i].file
-        setProcessingStatus(`Validation et traitement du fichier ${i + 1}/${files.length}: ${file.name}`)
+        setProcessingStatus(`Traitement du fichier ${i + 1}/${files.length}: ${file.name}`)
 
         try {
           // Traiter le fichier selon son type
           const isCSV = file.name.toLowerCase().endsWith(".csv")
           const data = isCSV ? await readCSVFile(file) : await readExcelFile(file)
 
-          // Valider le format des données
+          // Validation simplifiée
           const errors = validateDataFormat(data)
-
           if (errors.length > 0) {
             newValidationErrors.push({
               fileName: file.name,
@@ -260,12 +205,15 @@ export function FileUploader() {
             })
           }
 
-          // Stocker les données même si il y a des erreurs
           processedData.push({
             fileName: file.name,
             data: data,
           })
+
+          // Mettre à jour la progression
+          setProgress(((i + 1) / files.length) * 100)
         } catch (err) {
+          console.error("Erreur lors du traitement du fichier:", err)
           newValidationErrors.push({
             fileName: file.name,
             errors: [
@@ -276,18 +224,12 @@ export function FileUploader() {
             ],
           })
         }
-
-        // Mettre à jour la progression
-        setProgress(((i + 1) / files.length) * 100)
       }
 
       setValidationErrors(newValidationErrors)
       setProcessedFiles(processedData)
-      setProcessingStatus(
-        newValidationErrors.length > 0
-          ? "Traitement terminé avec des avertissements"
-          : "Traitement terminé avec succès",
-      )
+      setProcessingStatus("Traitement terminé")
+      setProcessing(false)
     } catch (err) {
       setError(`Erreur lors du traitement des fichiers: ${err instanceof Error ? err.message : String(err)}`)
       setProcessingStatus("Une erreur est survenue")

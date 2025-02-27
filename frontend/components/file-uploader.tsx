@@ -23,16 +23,50 @@ const formatLargeNumber = (value: any): string => {
   return value?.toString() || ""
 }
 
-// Fonction utilitaire pour formater les dates
+// Fonction utilitaire pour formater les dates de manière uniforme
+const formatDate = (value: any): string => {
+  if (!value) return ""
+
+  try {
+    // Si c'est déjà au bon format (DD/MM/YYYY HH:mm:ss), on le garde
+    if (typeof value === "string" && /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/.test(value)) {
+      return value
+    }
+
+    // Créer un objet Date à partir de la valeur
+    const date = new Date(value)
+
+    // Vérifier si la date est valide
+    if (isNaN(date.getTime())) {
+      return value?.toString() || ""
+    }
+
+    // Formater la date au format désiré
+    const day = String(date.getDate()).padStart(2, "0")
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const year = date.getFullYear()
+    const hours = String(date.getHours()).padStart(2, "0")
+    const minutes = String(date.getMinutes()).padStart(2, "0")
+    const seconds = String(date.getSeconds()).padStart(2, "0")
+
+    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`
+  } catch (e) {
+    console.warn("Erreur de conversion de date:", e)
+    return value?.toString() || ""
+  }
+}
+
+// Fonction utilitaire pour formater les dates Excel
 const formatExcelDate = (value: any): string => {
-  // Si c'est déjà une chaîne de caractères, on la retourne telle quelle
-  if (typeof value === "string") return value
+  // Si c'est déjà une chaîne de caractères au bon format, on la retourne
+  if (typeof value === "string") {
+    return formatDate(value)
+  }
 
   // Si c'est un nombre (timestamp Excel), on le convertit
   if (typeof value === "number") {
     try {
       const date = XLSX.SSF.parse_date_code(value)
-      // Format: YYYY-MM-DD HH:mm:ss ou DD/MM/YYYY HH:mm:ss selon le format d'origine
       if (date) {
         const year = date.y
         const month = String(date.m).padStart(2, "0")
@@ -41,18 +75,15 @@ const formatExcelDate = (value: any): string => {
         const minutes = String(date.M).padStart(2, "0")
         const seconds = String(date.S).padStart(2, "0")
 
-        // On vérifie si la valeur originale contenait un slash
-        if (value.toString().includes("/")) {
-          return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`
-        }
-        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+        return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`
       }
     } catch (e) {
-      console.warn("Erreur de conversion de date:", e)
+      console.warn("Erreur de conversion de date Excel:", e)
     }
   }
 
-  return value?.toString() || ""
+  // Si la conversion Excel échoue, on essaie le formatage standard
+  return formatDate(value)
 }
 
 export function FileUploader() {
@@ -149,7 +180,7 @@ export function FileUploader() {
           // Convertir en JSON avec des options spécifiques
           const json = XLSX.utils.sheet_to_json(worksheet, {
             raw: true, // Obtenir les valeurs brutes
-            dateNF: "yyyy-mm-dd hh:mm:ss",
+            dateNF: "dd/mm/yyyy hh:mm:ss",
           })
 
           // Nettoyer et formater les données
@@ -162,7 +193,7 @@ export function FileUploader() {
 
               // Appliquer le formatage approprié selon la colonne
               if (key === "Création" || key === "Mise à jour") {
-                cleanedRow[cleanKey] = formatExcelDate(value)
+                cleanedRow[cleanKey] = formatDate(value)
               } else if (key === "ID CCU") {
                 cleanedRow[cleanKey] = formatLargeNumber(value)
               } else {
@@ -204,9 +235,9 @@ export function FileUploader() {
           // Traiter l'en-tête - enlever les guillemets et nettoyer
           const headers = lines[0].split(";").map((header) => header.trim().replace(/^"?|"?$/g, ""))
 
+          // Modifier le traitement des lignes pour formater les dates
           const result = []
 
-          // Traiter chaque ligne
           for (let i = 1; i < lines.length; i++) {
             if (!lines[i].trim()) continue
 
@@ -247,7 +278,13 @@ export function FileUploader() {
               if (values[index] !== undefined) {
                 // Nettoyer la valeur des guillemets externes
                 const value = values[index].replace(/^"?|"?$/g, "")
-                row[header] = value
+
+                // Formater les dates si nécessaire
+                if (header === "Création" || header === "Mise à jour") {
+                  row[header] = formatDate(value)
+                } else {
+                  row[header] = value
+                }
               } else {
                 row[header] = ""
               }

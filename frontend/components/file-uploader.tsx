@@ -56,55 +56,47 @@ const formatDate = (value: any, timeValue?: string): string => {
   if (!value) return ""
 
   try {
-    // Si c'est déjà au format DD/MM/YYYY HH:mm:ss
-    if (typeof value === "string" && /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}(:\d{2})?$/.test(value)) {
-      return value.includes(":") ? value : `${value}:00`
+    const dateStr = value
+    const timeStr = timeValue || ""
+
+    // Si la date est au format "YYYY-MM-DD HH:mm:ss"
+    if (typeof value === "string" && value.includes("-")) {
+      const date = new Date(value)
+      if (!isNaN(date.getTime())) {
+        const day = String(date.getDate()).padStart(2, "0")
+        const month = String(date.getMonth() + 1).padStart(2, "0")
+        const year = date.getFullYear()
+        const hours = String(date.getHours()).padStart(2, "0")
+        const minutes = String(date.getMinutes()).padStart(2, "0")
+        const seconds = String(date.getSeconds()).padStart(2, "0")
+        return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`
+      }
     }
 
-    let date: Date
-
-    // Gérer le cas des dates au format GMT
-    if (typeof value === "string" && value.includes("GMT")) {
-      date = new Date(value)
-    }
-    // Gérer le cas des dates au format "jour X mois YYYY"
-    else if (typeof value === "string" && /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/i.test(value)) {
+    // Si la date est au format "jour X mois YYYY"
+    if (typeof value === "string" && value.toLowerCase().includes("mardi")) {
       const parts = value.split(" ")
       const day = parts[1]
       const month = getMonthNumber(parts[2])
       const year = parts[3]
 
-      if (timeValue) {
-        // Si nous avons une valeur de temps séparée
-        const timeParts = timeValue.split(":")
-        return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year} ${timeParts[0].padStart(2, "0")}:${timeParts[1].padStart(2, "0")}:${timeParts[2] || "00"}`
+      if (timeStr) {
+        // Si nous avons une valeur de temps séparée, l'utiliser
+        const timeParts = timeStr.split(":")
+        if (timeParts.length >= 2) {
+          return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year} ${timeParts[0].padStart(2, "0")}:${timeParts[1].padStart(2, "0")}:${timeParts[2] || "00"}`
+        }
       }
 
-      date = new Date(`${year}-${month}-${day}`)
-    }
-    // Gérer le cas des dates au format YYYY-MM-DD HH:mm:ss
-    else if (typeof value === "string" && value.includes("-")) {
-      date = new Date(value)
-    }
-    // Pour tout autre format, essayer de créer une date
-    else {
-      date = new Date(value)
+      return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year} 00:00:00`
     }
 
-    // Vérifier si la date est valide
-    if (isNaN(date.getTime())) {
-      return value?.toString() || ""
+    // Si c'est déjà au format DD/MM/YYYY HH:mm:ss
+    if (typeof value === "string" && /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}(:\d{2})?$/.test(value)) {
+      return value.includes(":") ? value : `${value}:00`
     }
 
-    // Formater la date au format désiré
-    const day = String(date.getDate()).padStart(2, "0")
-    const month = String(date.getMonth() + 1).padStart(2, "0")
-    const year = date.getFullYear()
-    const hours = String(date.getHours()).padStart(2, "0")
-    const minutes = String(date.getMinutes()).padStart(2, "0")
-    const seconds = String(date.getSeconds()).padStart(2, "0")
-
-    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`
+    return value?.toString() || ""
   } catch (e) {
     console.warn("Erreur de conversion de date:", e)
     return value?.toString() || ""
@@ -114,18 +106,18 @@ const formatDate = (value: any, timeValue?: string): string => {
 // Fonction utilitaire pour convertir le nom du mois en numéro
 const getMonthNumber = (monthName: string): string => {
   const months: { [key: string]: string } = {
-    Jan: "01",
-    Feb: "02",
-    Mar: "03",
-    Apr: "04",
-    May: "05",
-    Jun: "06",
-    Jul: "07",
-    Aug: "08",
-    Sep: "09",
-    Oct: "10",
-    Nov: "11",
-    Dec: "12",
+    janvier: "01",
+    février: "02",
+    mars: "03",
+    avril: "04",
+    mai: "05",
+    juin: "06",
+    juillet: "07",
+    août: "08",
+    septembre: "09",
+    octobre: "10",
+    novembre: "11",
+    décembre: "12",
   }
   return months[monthName.toLowerCase()] || "01"
 }
@@ -226,12 +218,7 @@ export function FileUploader() {
       reader.onload = (e) => {
         try {
           const data = e.target?.result
-          const workbook = XLSX.read(data, {
-            type: "binary",
-            cellDates: true,
-            cellNF: false,
-            cellText: false,
-          })
+          const workbook = XLSX.read(data, { type: "binary", cellDates: true })
           const sheetName = workbook.SheetNames[0]
           const worksheet = workbook.Sheets[sheetName]
 

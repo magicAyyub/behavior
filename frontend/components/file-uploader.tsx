@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useDropzone } from "react-dropzone"
 import * as XLSX from "xlsx"
-import { FileIcon, UploadCloudIcon, XIcon, DownloadIcon } from "lucide-react"
+import { FileIcon, UploadCloudIcon, XIcon, DownloadIcon, AlertTriangleIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -12,6 +12,111 @@ import { DataPreview } from "@/components/data-preview"
 type FileWithPreview = {
   file: File
   preview: string
+}
+
+type FileValidationError = {
+  fileName: string
+  errors: {
+    type: "missing_column" | "extra_column" | "invalid_format"
+    column?: string
+    message: string
+  }[]
+}
+
+// Structure attendue des colonnes
+const EXPECTED_COLUMNS = [
+  "Référence",
+  "ID LIN",
+  "ID CCU",
+  "Etat",
+  "Création",
+  "Mise à jour",
+  "IDRH",
+  "Device Id",
+  "Retour métier",
+  "Commentaires cloture",
+  "Nom bureau de poste",
+  "Regate",
+  "Source",
+  "Solution scan",
+  "RG",
+  "RUO",
+]
+
+// Fonction pour valider le format des données
+const validateDataFormat = (data: any[]): FileValidationError["errors"] => {
+  const errors: FileValidationError["errors"] = []
+
+  if (data.length === 0) return errors
+
+  const firstRow = data[0]
+  const columns = Object.keys(firstRow)
+
+  // Vérifier les colonnes manquantes
+  EXPECTED_COLUMNS.forEach((expectedCol) => {
+    if (!columns.includes(expectedCol)) {
+      errors.push({
+        type: "missing_column",
+        column: expectedCol,
+        message: `La colonne "${expectedCol}" est manquante`,
+      })
+    }
+  })
+
+  // Vérifier les colonnes supplémentaires
+  columns.forEach((col) => {
+    if (!EXPECTED_COLUMNS.includes(col)) {
+      errors.push({
+        type: "extra_column",
+        column: col,
+        message: `Colonne supplémentaire non attendue : "${col}"`,
+      })
+    }
+  })
+
+  // Vérifier le format des données dans chaque ligne
+  data.forEach((row, index) => {
+    // Vérifier que ID LIN n'est pas une date
+    if (row["ID LIN"] && isDateString(row["ID LIN"])) {
+      errors.push({
+        type: "invalid_format",
+        column: "ID LIN",
+        message: `La colonne "ID LIN" contient une date à la ligne ${index + 1} : "${row["ID LIN"]}"`,
+      })
+    }
+
+    // Vérifier le format des dates
+    if (row["Création"] && !isValidDateFormat(row["Création"])) {
+      errors.push({
+        type: "invalid_format",
+        column: "Création",
+        message: `Format de date invalide dans la colonne "Création" à la ligne ${index + 1} : "${row["Création"]}"`,
+      })
+    }
+
+    if (row["Mise à jour"] && !isValidDateFormat(row["Mise à jour"])) {
+      errors.push({
+        type: "invalid_format",
+        column: "Mise à jour",
+        message: `Format de date invalide dans la colonne "Mise à jour" à la ligne ${index + 1} : "${row["Mise à jour"]}"`,
+      })
+    }
+  })
+
+  return errors
+}
+
+// Fonction pour vérifier si une chaîne ressemble à une date
+const isDateString = (value: string): boolean => {
+  if (!value) return false
+  // Vérifie si la chaîne contient des mots comme "Mon", "Tue", etc. ou "GMT"
+  return /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/.test(value) || value.includes("GMT")
+}
+
+// Fonction pour vérifier le format de date valide (DD/MM/YYYY HH:mm:ss)
+const isValidDateFormat = (value: string): boolean => {
+  if (!value) return true // Permettre les valeurs vides
+  return /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/.test(value)
 }
 
 // Fonction utilitaire pour formater les grands nombres
@@ -90,10 +195,10 @@ export function FileUploader() {
   const [files, setFiles] = useState<FileWithPreview[]>([])
   const [processing, setProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [combinedData, setCombinedData] = useState<any[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [processingStatus, setProcessingStatus] = useState<string>("")
   const [processedFiles, setProcessedFiles] = useState<Array<{ fileName: string; data: any[] }>>([])
+  const [validationErrors, setValidationErrors] = useState<FileValidationError[]>([])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
@@ -119,7 +224,6 @@ export function FileUploader() {
       newFiles.splice(index, 1)
       return newFiles
     })
-    setCombinedData(null)
   }
 
   const processFiles = async () => {
@@ -130,34 +234,60 @@ export function FileUploader() {
 
     setProcessing(true)
     setProgress(0)
-    setCombinedData(null)
     setError(null)
+    setValidationErrors([])
 
     try {
       const processedData = []
+      const newValidationErrors: FileValidationError[] = []
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i].file
-        setProcessingStatus(`Traitement du fichier ${i + 1}/${files.length}: ${file.name}`)
+        setProcessingStatus(`Validation et traitement du fichier ${i + 1}/${files.length}: ${file.name}`)
 
-        // Déterminer si c'est un CSV ou un Excel
-        const isCSV = file.name.toLowerCase().endsWith(".csv")
+        try {
+          // Traiter le fichier selon son type
+          const isCSV = file.name.toLowerCase().endsWith(".csv")
+          const data = isCSV ? await readCSVFile(file) : await readExcelFile(file)
 
-        // Traiter le fichier selon son type
-        const data = isCSV ? await readCSVFile(file) : await readExcelFile(file)
+          // Valider le format des données
+          const errors = validateDataFormat(data)
 
-        // Stocker les données avec le nom du fichier pour le téléchargement ultérieur
-        processedData.push({
-          fileName: file.name,
-          data: data,
-        })
+          if (errors.length > 0) {
+            newValidationErrors.push({
+              fileName: file.name,
+              errors: errors,
+            })
+          }
+
+          // Stocker les données même si il y a des erreurs
+          processedData.push({
+            fileName: file.name,
+            data: data,
+          })
+        } catch (err) {
+          newValidationErrors.push({
+            fileName: file.name,
+            errors: [
+              {
+                type: "invalid_format",
+                message: `Erreur lors du traitement du fichier : ${err instanceof Error ? err.message : String(err)}`,
+              },
+            ],
+          })
+        }
 
         // Mettre à jour la progression
         setProgress(((i + 1) / files.length) * 100)
       }
 
+      setValidationErrors(newValidationErrors)
       setProcessedFiles(processedData)
-      setProcessingStatus("Traitement terminé")
+      setProcessingStatus(
+        newValidationErrors.length > 0
+          ? "Traitement terminé avec des avertissements"
+          : "Traitement terminé avec succès",
+      )
     } catch (err) {
       setError(`Erreur lors du traitement des fichiers: ${err instanceof Error ? err.message : String(err)}`)
       setProcessingStatus("Une erreur est survenue")
@@ -235,9 +365,9 @@ export function FileUploader() {
           // Traiter l'en-tête - enlever les guillemets et nettoyer
           const headers = lines[0].split(";").map((header) => header.trim().replace(/^"?|"?$/g, ""))
 
-          // Modifier le traitement des lignes pour formater les dates
           const result = []
 
+          // Traiter chaque ligne
           for (let i = 1; i < lines.length; i++) {
             if (!lines[i].trim()) continue
 
@@ -278,13 +408,7 @@ export function FileUploader() {
               if (values[index] !== undefined) {
                 // Nettoyer la valeur des guillemets externes
                 const value = values[index].replace(/^"?|"?$/g, "")
-
-                // Formater les dates si nécessaire
-                if (header === "Création" || header === "Mise à jour") {
-                  row[header] = formatDate(value)
-                } else {
-                  row[header] = value
-                }
+                row[header] = value
               } else {
                 row[header] = ""
               }
@@ -308,7 +432,6 @@ export function FileUploader() {
     })
   }
 
-  // Modification de la fonction downloadCSV pour utiliser le point-virgule comme séparateur
   const downloadCSV = (fileData: { fileName: string; data: any[] }) => {
     if (!fileData || fileData.data.length === 0) return
 
@@ -372,7 +495,7 @@ export function FileUploader() {
         <input {...getInputProps()} />
         <UploadCloudIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
         <h3 className="text-lg font-medium mb-2">
-          {isDragActive ? "Déposez les fichiers ici" : "Glissez-déposez vos fichiers Excel"}
+          {isDragActive ? "Déposez les fichiers ici" : "Glissez-déposez vos fichiers Excel ou CSV"}
         </h3>
         <p className="text-sm text-muted-foreground mb-4">ou cliquez pour sélectionner des fichiers</p>
         <Button variant="outline" type="button">
@@ -414,6 +537,26 @@ export function FileUploader() {
             <span>{Math.round(progress)}%</span>
           </div>
           <Progress value={progress} />
+        </div>
+      )}
+
+      {validationErrors.length > 0 && (
+        <div className="space-y-4">
+          {validationErrors.map((fileError, index) => (
+            <Alert key={index} variant="destructive" className="flex items-start gap-4">
+              <AlertTriangleIcon className="h-5 w-5 mt-0.5" />
+              <div className="space-y-2 flex-1">
+                <h4 className="font-medium">Problèmes détectés dans {fileError.fileName}</h4>
+                <ul className="list-disc pl-4 space-y-1">
+                  {fileError.errors.map((error, errorIndex) => (
+                    <li key={errorIndex} className="text-sm">
+                      {error.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Alert>
+          ))}
         </div>
       )}
 

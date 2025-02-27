@@ -14,6 +14,15 @@ type FileWithPreview = {
   preview: string
 }
 
+// Fonction utilitaire pour formater les grands nombres
+const formatLargeNumber = (value: any): string => {
+  if (typeof value === "number") {
+    // Convertir en chaîne sans notation scientifique
+    return value.toLocaleString("fullwide", { useGrouping: false })
+  }
+  return value?.toString() || ""
+}
+
 // Fonction utilitaire pour formater les dates
 const formatExcelDate = (value: any): string => {
   // Si c'est déjà une chaîne de caractères, on la retourne telle quelle
@@ -139,7 +148,7 @@ export function FileUploader() {
 
           // Convertir en JSON avec des options spécifiques
           const json = XLSX.utils.sheet_to_json(worksheet, {
-            raw: false,
+            raw: true, // Obtenir les valeurs brutes
             dateNF: "yyyy-mm-dd hh:mm:ss",
           })
 
@@ -151,11 +160,13 @@ export function FileUploader() {
               // Remplacer __EMPTY par "ID LIN" si nécessaire
               const cleanKey = key === "__EMPTY" ? "ID LIN" : key
 
-              // Formater les dates si nécessaire
+              // Appliquer le formatage approprié selon la colonne
               if (key === "Création" || key === "Mise à jour") {
                 cleanedRow[cleanKey] = formatExcelDate(value)
+              } else if (key === "ID CCU") {
+                cleanedRow[cleanKey] = formatLargeNumber(value)
               } else {
-                cleanedRow[cleanKey] = value
+                cleanedRow[cleanKey] = value?.toString() || ""
               }
             })
 

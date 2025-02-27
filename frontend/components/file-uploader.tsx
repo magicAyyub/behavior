@@ -68,7 +68,7 @@ const formatDate = (value: any, timeValue?: string): string => {
       date = new Date(value)
     }
     // Gérer le cas des dates au format "jour X mois YYYY"
-    else if (typeof value === "string" && /^(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)/i.test(value)) {
+    else if (typeof value === "string" && /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/i.test(value)) {
       const parts = value.split(" ")
       const day = parts[1]
       const month = getMonthNumber(parts[2])
@@ -114,18 +114,18 @@ const formatDate = (value: any, timeValue?: string): string => {
 // Fonction utilitaire pour convertir le nom du mois en numéro
 const getMonthNumber = (monthName: string): string => {
   const months: { [key: string]: string } = {
-    janvier: "01",
-    février: "02",
-    mars: "03",
-    avril: "04",
-    mai: "05",
-    juin: "06",
-    juillet: "07",
-    août: "08",
-    septembre: "09",
-    octobre: "10",
-    novembre: "11",
-    décembre: "12",
+    Jan: "01",
+    Feb: "02",
+    Mar: "03",
+    Apr: "04",
+    May: "05",
+    Jun: "06",
+    Jul: "07",
+    Aug: "08",
+    Sep: "09",
+    Oct: "10",
+    Nov: "11",
+    Dec: "12",
   }
   return months[monthName.toLowerCase()] || "01"
 }

@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from src.utils.database import engine
 import src.utils.models as models
-# from src.app.routes import users
+from src.app.routes import enregistrement
 from src.utils.settings import ORIGINS
 
 
@@ -25,7 +25,7 @@ app.add_middleware(
 )
 
 # Include all routes
-# app.include_router(students.router)
+app.include_router(enregistrement.router)
 
 
 # Root endpoint to verify API connection

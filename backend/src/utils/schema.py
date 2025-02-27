@@ -5,16 +5,29 @@ from datetime import date, datetime
 from enum import Enum
 
 # Base Models
-class UserBase(BaseModel):
-    first_name: str = Field(..., min_length=1, max_length=50)
-    last_name: str = Field(..., min_length=1, max_length=50)
-    email: EmailStr
+class EnregistrementBase(BaseModel):
+    reference: str
+    id_lin: str
+    id_ccu: str
+    etat: str
+    creation: datetime
+    mise_a_jour: datetime
+    idrh: str
+    device_id: str
+    retour_metier: Optional[str] = None
+    commentaires_cloture: Optional[str] = None
+    nom_bureau_poste: str
+    regate: str
+    source: str
+    solution_scan: str
+    rg: str
+    ruo: str
 
 
 # Response Models
-class UserResponse(UserBase):
+class Enregistrement(EnregistrementBase):
     id: int
-    created_at: datetime
+    imported_at: datetime
 
     class Config:
-        from_attributes = True
+        orm_mode = True

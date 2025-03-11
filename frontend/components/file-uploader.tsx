@@ -2,12 +2,28 @@
 
 import { useState } from "react"
 import { useDropzone } from "react-dropzone"
-import * as XLSX from "xlsx"
-import { FileIcon, UploadCloudIcon, XIcon, DownloadIcon } from "lucide-react"
+import * as ExcelJS from "exceljs"
+import {
+  FileIcon,
+  UploadCloudIcon,
+  XIcon,
+  DownloadIcon,
+  FileTextIcon,
+  CheckCircleIcon,
+  AlertCircleIcon,
+  InfoIcon,
+  FileSpreadsheetIcon,
+  ArrowRightIcon,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { DataPreview } from "@/components/data-preview"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { DataPreview } from "./data-preview"
 
 type FileWithPreview = {
   file: File
@@ -114,20 +130,69 @@ const formatDate = (value: any, timeValue?: string): string => {
 // Fonction utilitaire pour convertir le nom du mois en numéro
 const getMonthNumber = (monthName: string): string => {
   const months: { [key: string]: string } = {
-    Jan: "01",
-    Feb: "02",
-    Mar: "03",
-    Apr: "04",
-    May: "05",
-    Jun: "06",
-    Jul: "07",
-    Aug: "08",
-    Sep: "09",
-    Oct: "10",
-    Nov: "11",
-    Dec: "12",
+    jan: "01",
+    feb: "02",
+    mar: "03",
+    apr: "04",
+    may: "05",
+    jun: "06",
+    jul: "07",
+    aug: "08",
+    sep: "09",
+    oct: "10",
+    nov: "11",
+    dec: "12",
   }
-  return months[monthName.toLowerCase()] || "01"
+  return months[monthName.substring(0, 3).toLowerCase()] || "01"
+}
+
+// Fonction utilitaire pour extraire la valeur d'une cellule Excel
+const getCellValue = (cell: ExcelJS.Cell): any => {
+  if (!cell) return ""
+
+  if (cell.type === ExcelJS.ValueType.Date) {
+    return cell.value
+  }
+
+  if (cell.type === ExcelJS.ValueType.Number) {
+    return cell.value
+  }
+
+  if (cell.type === ExcelJS.ValueType.String) {
+    return cell.text.trim()
+  }
+
+  if (cell.type === ExcelJS.ValueType.Boolean) {
+    return cell.value ? "Oui" : "Non"
+  }
+
+  if (cell.type === ExcelJS.ValueType.Formula) {
+    return cell.result
+  }
+
+  return cell.value?.toString() || ""
+}
+
+// Fonction pour déterminer le type de fichier et son icône
+const getFileTypeInfo = (fileName: string) => {
+  const extension = fileName.split(".").pop()?.toLowerCase()
+
+  if (extension === "csv") {
+    return {
+      icon: FileTextIcon,
+      label: "CSV",
+    }
+  } else if (["xlsx", "xls"].includes(extension || "")) {
+    return {
+      icon: FileSpreadsheetIcon,
+      label: "Excel",
+    }
+  } else {
+    return {
+      icon: FileIcon,
+      label: "Fichier",
+    }
+  }
 }
 
 export function FileUploader() {
@@ -138,6 +203,7 @@ export function FileUploader() {
   const [processingStatus, setProcessingStatus] = useState<string>("")
   const [processedFiles, setProcessedFiles] = useState<Array<{ fileName: string; data: any[] }>>([])
   const [validationErrors, setValidationErrors] = useState<FileValidationError[]>([])
+  const [activeTab, setActiveTab] = useState<string>("upload")
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
@@ -211,6 +277,11 @@ export function FileUploader() {
       setValidationErrors(newValidationErrors)
       setProcessedFiles(processedData)
       setProcessingStatus("Traitement terminé")
+
+      // Switch to results tab when processing is complete
+      if (processedData.length > 0) {
+        setActiveTab("results")
+      }
     } catch (err) {
       setError(`Erreur lors du traitement des fichiers: ${err instanceof Error ? err.message : String(err)}`)
       setProcessingStatus("Une erreur est survenue")
@@ -219,85 +290,77 @@ export function FileUploader() {
     }
   }
 
-  const readExcelFile = (file: File): Promise<any[]> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
+  const readExcelFile = async (file: File): Promise<any[]> => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const arrayBuffer = await file.arrayBuffer()
+        const workbook = new ExcelJS.Workbook()
+        await workbook.xlsx.load(arrayBuffer)
 
-      reader.onload = (e) => {
-        try {
-          const data = e.target?.result
-          const workbook = XLSX.read(data, {
-            type: "binary",
-            cellDates: true,
-            cellNF: false,
-            cellText: false,
-          })
-          const sheetName = workbook.SheetNames[0]
-          const worksheet = workbook.Sheets[sheetName]
-
-          // Obtenir toutes les colonnes présentes dans le fichier
-          const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1")
-          const actualColumns: string[] = []
-
-          // Lire l'en-tête pour obtenir les noms réels des colonnes
-          for (let C = range.s.c; C <= range.e.c; C++) {
-            const cell = worksheet[XLSX.utils.encode_cell({ r: range.s.r, c: C })]
-            if (cell && cell.v) {
-              actualColumns.push(cell.v.toString().trim())
-            }
-          }
-
-          // Convertir en JSON avec des options spécifiques
-          const json = XLSX.utils.sheet_to_json(worksheet, {
-            raw: true,
-            defval: "", // Valeur par défaut pour les cellules vides
-          })
-
-          // Nettoyer et formater les données
-          const cleanedData = json.map((row: any) => {
-            const cleanedRow: Record<string, any> = {}
-
-            // Initialiser toutes les colonnes attendues avec des valeurs vides
-            EXPECTED_COLUMNS.forEach((col) => {
-              cleanedRow[col] = ""
-            })
-
-            // Traiter les données présentes
-            Object.entries(row).forEach(([key, value]) => {
-              const cleanKey = key.trim()
-
-              // Gérer le cas spécial de la colonne Création avec l'heure séparée
-              if (cleanKey === "Création") {
-                // Chercher une colonne d'heure potentielle
-                const timeValue = row[Object.keys(row).find((k) => k.includes("heure") || k.endsWith(":")) || ""]
-                cleanedRow[cleanKey] = formatDate(value, timeValue)
-              }
-              // Gérer les autres colonnes
-              else if (EXPECTED_COLUMNS.includes(cleanKey)) {
-                if (cleanKey === "ID CCU") {
-                  cleanedRow[cleanKey] = formatLargeNumber(value)
-                } else if (cleanKey === "Mise à jour") {
-                  cleanedRow[cleanKey] = formatDate(value?.toString())
-                } else {
-                  cleanedRow[cleanKey] = value?.toString() || ""
-                }
-              }
-            })
-
-            return cleanedRow
-          })
-
-          resolve(cleanedData)
-        } catch (err) {
-          reject(err)
+        // Utiliser la première feuille
+        const worksheet = workbook.worksheets[0]
+        if (!worksheet) {
+          throw new Error("Aucune feuille de calcul trouvée dans le fichier Excel")
         }
-      }
 
-      reader.onerror = (err) => {
-        reject(err)
-      }
+        // Obtenir les en-têtes (première ligne)
+        const headers: string[] = []
+        worksheet.getRow(1).eachCell((cell, colNumber) => {
+          headers[colNumber - 1] = getCellValue(cell).toString().trim()
+        })
 
-      reader.readAsBinaryString(file)
+        // Convertir les données en objets
+        const data: Record<string, any>[] = []
+
+        // Parcourir chaque ligne (à partir de la deuxième ligne)
+        worksheet.eachRow((row, rowNumber) => {
+          if (rowNumber === 1) return // Ignorer la ligne d'en-tête
+
+          const rowData: Record<string, any> = {}
+
+          // Initialiser toutes les colonnes attendues avec des valeurs vides
+          EXPECTED_COLUMNS.forEach((col) => {
+            rowData[col] = ""
+          })
+
+          // Parcourir chaque cellule de la ligne
+          row.eachCell((cell, colNumber) => {
+            const header = headers[colNumber - 1]
+            if (!header) return
+
+            const value = getCellValue(cell)
+
+            // Gérer le cas spécial de la colonne Création avec l'heure séparée
+            if (header === "Création") {
+              // Chercher une colonne d'heure potentielle
+              let timeValue = ""
+              row.eachCell((timeCell, timeColNumber) => {
+                const timeHeader = headers[timeColNumber - 1]
+                if (timeHeader && (timeHeader.includes("heure") || timeHeader.endsWith(":"))) {
+                  timeValue = getCellValue(timeCell)
+                }
+              })
+              rowData[header] = formatDate(value, timeValue)
+            }
+            // Gérer les autres colonnes
+            else if (EXPECTED_COLUMNS.includes(header)) {
+              if (header === "ID CCU") {
+                rowData[header] = formatLargeNumber(value)
+              } else if (header === "Mise à jour") {
+                rowData[header] = formatDate(value?.toString())
+              } else {
+                rowData[header] = value?.toString() || ""
+              }
+            }
+          })
+
+          data.push(rowData)
+        })
+
+        resolve(data)
+      } catch (error) {
+        reject(error)
+      }
     })
   }
 
@@ -425,95 +488,279 @@ export function FileUploader() {
     }
   }
 
-  return (
-    <div className="space-y-6">
-      <div
-        {...getRootProps()}
-        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-          isDragActive ? "border-primary bg-primary/5" : "border-gray-300 hover:border-primary/50"
-        }`}
-      >
-        <input {...getInputProps()} />
-        <UploadCloudIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-medium mb-2">
-          {isDragActive ? "Déposez les fichiers ici" : "Glissez-déposez vos fichiers Excel ou CSV"}
-        </h3>
-        <p className="text-sm text-muted-foreground mb-4">ou cliquez pour sélectionner des fichiers</p>
-        <Button variant="outline" type="button">
-          Sélectionner des fichiers
-        </Button>
-      </div>
+  const downloadAllCSV = () => {
+    if (processedFiles.length === 0) return
 
-      {files.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Fichiers sélectionnés ({files.length})</h3>
-          <div className="grid gap-2">
-            {files.map((file, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-md">
-                <div className="flex items-center space-x-3">
-                  <FileIcon className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-sm font-medium truncate max-w-[300px]">{file.file.name}</span>
-                  <span className="text-xs text-muted-foreground">{(file.file.size / 1024).toFixed(1)} KB</span>
-                </div>
-                <Button variant="ghost" size="icon" onClick={() => removeFile(index)} className="h-8 w-8">
-                  <XIcon className="h-4 w-4" />
-                  <span className="sr-only">Supprimer</span>
+    processedFiles.forEach((fileData) => {
+      downloadCSV(fileData)
+    })
+  }
+
+  const clearAll = () => {
+    files.forEach((file) => URL.revokeObjectURL(file.preview))
+    setFiles([])
+    setProcessedFiles([])
+    setValidationErrors([])
+    setError(null)
+    setActiveTab("upload")
+  }
+
+  return (
+    <div className="space-y-6 max-w-5xl mx-auto">
+      <Card className="border-t-2 border-t-slate-300 shadow-sm">
+        <CardHeader className="bg-slate-50">
+          <CardTitle className="flex items-center gap-2 text-slate-800">
+            <FileTextIcon className="h-5 w-5 text-slate-600" />
+            Convertisseur de fichiers
+          </CardTitle>
+          <CardDescription className="text-slate-500">
+            Importez vos fichiers Excel ou CSV pour les convertir au format standardisé
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid grid-cols-2 mb-6">
+              <TabsTrigger value="upload" disabled={processing}>
+                <UploadCloudIcon className="h-4 w-4 mr-2" />
+                Importation
+              </TabsTrigger>
+              <TabsTrigger value="results" disabled={processedFiles.length === 0 && !processing}>
+                <CheckCircleIcon className="h-4 w-4 mr-2" />
+                Résultats
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="upload" className="space-y-6">
+              <div
+                {...getRootProps()}
+                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                  isDragActive
+                    ? "border-slate-400 bg-slate-50"
+                    : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
+                }`}
+              >
+                <input {...getInputProps()} />
+                <UploadCloudIcon
+                  className={`mx-auto h-12 w-12 mb-4 ${isDragActive ? "text-slate-600" : "text-slate-400"}`}
+                />
+                <h3 className="text-lg font-medium mb-2 text-slate-700">
+                  {isDragActive ? "Déposez les fichiers ici" : "Glissez-déposez vos fichiers Excel ou CSV"}
+                </h3>
+                <p className="text-sm text-slate-500 mb-4">ou cliquez pour sélectionner des fichiers</p>
+                <Button variant="outline" type="button" className="bg-white hover:bg-slate-50">
+                  Sélectionner des fichiers
                 </Button>
               </div>
-            ))}
-          </div>
 
-          <div className="flex justify-end">
-            <Button onClick={processFiles} disabled={processing || files.length === 0}>
-              {processing ? "Traitement en cours..." : "Traiter les fichiers"}
-            </Button>
-          </div>
-        </div>
-      )}
+              {files.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium text-slate-700">Fichiers sélectionnés</h3>
+                    <Badge variant="outline" className="font-normal">
+                      {files.length} {files.length > 1 ? "fichiers" : "fichier"}
+                    </Badge>
+                  </div>
 
-      {processing && (
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span>{processingStatus}</span>
-            <span>{Math.round(progress)}%</span>
-          </div>
-          <Progress value={progress} />
-        </div>
-      )}
+                  <ScrollArea className="h-[200px] rounded-md border">
+                    <div className="p-4 grid gap-2">
+                      {files.map((file, index) => {
+                        const fileType = getFileTypeInfo(file.file.name)
+                        const FileTypeIcon = fileType.icon
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+                        return (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-3 bg-white rounded-md hover:bg-slate-50 transition-colors border border-slate-100"
+                          >
+                            <div className="flex items-center space-x-3">
+                              <div className="p-2 rounded-md bg-slate-100">
+                                <FileTypeIcon className="h-5 w-5 text-slate-600" />
+                              </div>
+                              <div>
+                                <span className="text-sm font-medium truncate max-w-[300px] block text-slate-700">
+                                  {file.file.name}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-slate-500">
+                                    {(file.file.size / 1024).toFixed(1)} KB
+                                  </span>
+                                  <Badge variant="secondary" className="text-xs py-0 h-5">
+                                    {fileType.label}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removeFile(index)}
+                                    className="h-8 w-8 text-slate-500 hover:text-slate-700"
+                                  >
+                                    <XIcon className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Supprimer</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </ScrollArea>
 
-      {processedFiles && processedFiles.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Fichiers traités ({processedFiles.length})</h3>
-          <div className="grid gap-4">
-            {processedFiles.map((fileData, index) => (
-              <div key={index} className="border rounded-md p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-medium">{fileData.fileName}</h4>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => downloadCSV(fileData)}
-                    title={`Télécharger ${fileData.fileName.substring(0, fileData.fileName.lastIndexOf("."))}_mapped.csv`}
-                  >
-                    <DownloadIcon className="h-4 w-4" />
-                  </Button>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={clearAll} disabled={processing}>
+                      <XIcon className="h-4 w-4 mr-2" />
+                      Tout effacer
+                    </Button>
+                    <Button onClick={processFiles} disabled={processing || files.length === 0}>
+                      {processing ? (
+                        <>
+                          <span className="h-4 w-4 mr-2 animate-spin inline-block rounded-full border-2 border-current border-t-transparent" />
+                          Traitement en cours...
+                        </>
+                      ) : (
+                        <>
+                          <ArrowRightIcon className="h-4 w-4 mr-2" />
+                          Traiter les fichiers
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
-                <DataPreview data={fileData.data.slice(0, 5)} />
-                <p className="text-sm text-muted-foreground mt-2">
-                  {fileData.data.length} lignes au total. Aperçu des 5 premières lignes.
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+              )}
+
+              {processing && (
+                <div className="space-y-2 mt-4 p-4 border rounded-md bg-slate-50">
+                  <div className="flex justify-between text-sm">
+                    <span className="flex items-center">
+                      <InfoIcon className="h-4 w-4 mr-2 text-slate-500" />
+                      <span className="text-slate-700">{processingStatus}</span>
+                    </span>
+                    <span className="font-medium text-slate-700">{Math.round(progress)}%</span>
+                  </div>
+                  <Progress value={progress} className="h-2" />
+                </div>
+              )}
+
+              {error && (
+                <Alert variant="destructive" className="mt-4">
+                  <AlertCircleIcon className="h-4 w-4 mr-2" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+            </TabsContent>
+
+            <TabsContent value="results" className="space-y-6">
+              {processedFiles && processedFiles.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium text-slate-700">Fichiers traités</h3>
+                    <div className="flex gap-2">
+                      <Badge variant="outline" className="font-normal">
+                        {processedFiles.length} {processedFiles.length > 1 ? "fichiers" : "fichier"}
+                      </Badge>
+                      <Button variant="outline" size="sm" onClick={downloadAllCSV} className="h-8">
+                        <DownloadIcon className="h-3.5 w-3.5 mr-1" />
+                        Tout télécharger
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4">
+                    {processedFiles.map((fileData, index) => {
+                      const fileType = getFileTypeInfo(fileData.fileName)
+                      const FileTypeIcon = fileType.icon
+
+                      return (
+                        <Card key={index} className="overflow-hidden border-slate-200">
+                          <CardHeader className="bg-slate-50 py-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="p-1.5 rounded-md bg-slate-200">
+                                  <FileTypeIcon className="h-4 w-4 text-slate-600" />
+                                </div>
+                                <h4 className="font-medium text-sm text-slate-700">{fileData.fileName}</h4>
+                                <Badge variant="secondary">{fileData.data.length} lignes</Badge>
+                              </div>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => downloadCSV(fileData)}
+                                      className="h-8 w-8 text-slate-600 hover:text-slate-800"
+                                    >
+                                      <DownloadIcon className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>
+                                      Télécharger {fileData.fileName.substring(0, fileData.fileName.lastIndexOf("."))}
+                                      _mapped.csv
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="p-0">
+                            <div className="p-4">
+                              <DataPreview data={fileData.data.slice(0, 5)} />
+                              <p className="text-xs text-slate-500 mt-2 flex items-center">
+                                <InfoIcon className="h-3 w-3 mr-1" />
+                                Aperçu des 5 premières lignes sur {fileData.data.length} au total.
+                              </p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
+                  </div>
+
+                  <CardFooter className="flex justify-end gap-2 mt-4 pt-4 border-t border-slate-200">
+                    <Button variant="outline" onClick={clearAll}>
+                      Nouvelle importation
+                    </Button>
+                  </CardFooter>
+                </div>
+              )}
+
+              {validationErrors.length > 0 && (
+                <div className="mt-4">
+                  <Alert variant="destructive">
+                    <AlertCircleIcon className="h-4 w-4 mr-2" />
+                    <AlertDescription>
+                      Des erreurs ont été détectées dans certains fichiers. Veuillez vérifier le format et réessayer.
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="mt-2 space-y-2">
+                    {validationErrors.map((error, index) => (
+                      <div key={index} className="p-3 border border-destructive/30 rounded-md bg-destructive/5">
+                        <p className="font-medium text-sm">{error.fileName}</p>
+                        <ul className="mt-1 text-xs space-y-1">
+                          {error.errors.map((err, i) => (
+                            <li key={i} className="text-destructive">
+                              • {err.message}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   )
 }
-

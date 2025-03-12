@@ -549,354 +549,375 @@ export function FileUploader() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      <Card className="border-t-4 border-t-indigo-500 shadow-md">
-        <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50">
-          <CardTitle className="flex items-center gap-2 text-indigo-700">
-            <FileTextIcon className="h-6 w-6 text-indigo-500" />
-            Convertisseur de fichiers
-          </CardTitle>
-          <CardDescription className="text-indigo-500">
-            Importez vos fichiers Excel ou CSV pour les convertir au format standardisé
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid grid-cols-4 mb-6 bg-indigo-50">
-              <TabsTrigger
-                value="upload"
-                disabled={processing}
-                className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white"
-              >
-                <UploadCloudIcon className="h-4 w-4 mr-2" />
-                Importation
-              </TabsTrigger>
-              <TabsTrigger
-                value="results"
-                disabled={processedFiles.length === 0 && !processing}
-                className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white"
-              >
-                <CheckCircleIcon className="h-4 w-4 mr-2" />
-                Résultats
-              </TabsTrigger>
-              <TabsTrigger
-                value="database"
-                className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white"
-              >
-                <DatabaseIcon className="h-4 w-4 mr-2" />
-                Base de données
-              </TabsTrigger>
-              <a
-                href="/analyse"
-                className="flex items-center justify-center px-3 py-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 rounded-md transition-colors"
-              >
-                <BarChartIcon className="h-4 w-4 mr-2" />
-                Analyse
-              </a>
-            </TabsList>
-
-            <TabsContent value="upload" className="space-y-6">
-              <div
-                {...getRootProps()}
-                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-                  isDragActive
-                    ? "border-indigo-500 bg-indigo-50"
-                    : "border-gray-300 hover:border-indigo-300 hover:bg-indigo-50/50"
-                }`}
-              >
-                <input {...getInputProps()} />
-                <UploadCloudIcon
-                  className={`mx-auto h-16 w-16 mb-4 ${isDragActive ? "text-indigo-500" : "text-indigo-300"}`}
-                />
-                <h3 className="text-lg font-medium mb-2 text-indigo-700">
-                  {isDragActive ? "Déposez les fichiers ici" : "Glissez-déposez vos fichiers Excel ou CSV"}
-                </h3>
-                <p className="text-sm text-indigo-500 mb-4">ou cliquez pour sélectionner des fichiers</p>
-                <Button
-                  variant="outline"
-                  type="button"
-                  className="bg-white hover:bg-indigo-50 text-indigo-600 border-indigo-200 hover:border-indigo-300"
+    <div>
+      <div className="space-y-6 max-w-5xl mx-auto">
+        <Card className="border-t-4 border-t-indigo-500 shadow-md">
+          <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50">
+            <CardTitle className="flex items-center gap-2 text-indigo-700">
+              <FileTextIcon className="h-6 w-6 text-indigo-500" />
+              Convertisseur de fichiers
+            </CardTitle>
+            <CardDescription className="text-indigo-500">
+              Importez vos fichiers Excel ou CSV pour les convertir au format standardisé
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid grid-cols-3 mb-6 bg-indigo-50">
+                <TabsTrigger
+                  value="upload"
+                  disabled={processing}
+                  className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white"
                 >
-                  Sélectionner des fichiers
-                </Button>
-              </div>
+                  <UploadCloudIcon className="h-4 w-4 mr-2" />
+                  Importation
+                </TabsTrigger>
+                <TabsTrigger
+                  value="results"
+                  disabled={processedFiles.length === 0 && !processing}
+                  className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white"
+                >
+                  <CheckCircleIcon className="h-4 w-4 mr-2" />
+                  Résultats
+                </TabsTrigger>
+                <TabsTrigger
+                  value="database"
+                  className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white"
+                >
+                  <DatabaseIcon className="h-4 w-4 mr-2" />
+                  Base de données
+                </TabsTrigger>
+              </TabsList>
 
-              {files.length > 0 && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium text-indigo-700">Fichiers sélectionnés</h3>
-                    <Badge variant="outline" className="font-normal bg-indigo-100 text-indigo-700 border-indigo-200">
-                      {files.length} {files.length > 1 ? "fichiers" : "fichier"}
-                    </Badge>
+              <TabsContent value="upload" className="space-y-6">
+                <div
+                  {...getRootProps()}
+                  className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                    isDragActive
+                      ? "border-indigo-500 bg-indigo-50"
+                      : "border-gray-300 hover:border-indigo-300 hover:bg-indigo-50/50"
+                  }`}
+                >
+                  <input {...getInputProps()} />
+                  <UploadCloudIcon
+                    className={`mx-auto h-16 w-16 mb-4 ${isDragActive ? "text-indigo-500" : "text-indigo-300"}`}
+                  />
+                  <h3 className="text-lg font-medium mb-2 text-indigo-700">
+                    {isDragActive ? "Déposez les fichiers ici" : "Glissez-déposez vos fichiers Excel ou CSV"}
+                  </h3>
+                  <p className="text-sm text-indigo-500 mb-4">ou cliquez pour sélectionner des fichiers</p>
+                  <Button
+                    variant="outline"
+                    type="button"
+                    className="bg-white hover:bg-indigo-50 text-indigo-600 border-indigo-200 hover:border-indigo-300"
+                  >
+                    Sélectionner des fichiers
+                  </Button>
+                </div>
+
+                {files.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium text-indigo-700">Fichiers sélectionnés</h3>
+                      <Badge variant="outline" className="font-normal bg-indigo-100 text-indigo-700 border-indigo-200">
+                        {files.length} {files.length > 1 ? "fichiers" : "fichier"}
+                      </Badge>
+                    </div>
+
+                    <ScrollArea className="h-[200px] rounded-md border border-indigo-100">
+                      <div className="p-4 grid gap-2">
+                        {files.map((file, index) => {
+                          const fileType = getFileTypeInfo(file.file.name)
+                          const FileTypeIcon = fileType.icon
+
+                          return (
+                            <div
+                              key={index}
+                              className="flex items-center justify-between p-3 bg-white rounded-md hover:bg-indigo-50/50 transition-colors border border-indigo-100/50"
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className={`p-2 rounded-md ${fileType.color}`}>
+                                  <FileTypeIcon className="h-5 w-5" />
+                                </div>
+                                <div>
+                                  <span className="text-sm font-medium truncate max-w-[300px] block text-gray-800">
+                                    {file.file.name}
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-500">{(file.file.size / 1024).toFixed(1)} KB</span>
+                                    <Badge variant="outline" className={`text-xs py-0 h-5 ${fileType.color}`}>
+                                      {fileType.label}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => removeFile(index)}
+                                      className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                    >
+                                      <XIcon className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Supprimer</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </ScrollArea>
+
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={clearAll}
+                        disabled={processing}
+                        className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                      >
+                        <XIcon className="h-4 w-4 mr-2" />
+                        Tout effacer
+                      </Button>
+                      <Button
+                        onClick={processFiles}
+                        disabled={processing || files.length === 0}
+                        className="bg-indigo-600 hover:bg-indigo-700"
+                      >
+                        {processing ? (
+                          <>
+                            <RefreshCwIcon className="h-4 w-4 mr-2 animate-spin" />
+                            Traitement en cours...
+                          </>
+                        ) : (
+                          <>
+                            <ArrowRightIcon className="h-4 w-4 mr-2" />
+                            Traiter les fichiers
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
+                )}
 
-                  <ScrollArea className="h-[200px] rounded-md border border-indigo-100">
-                    <div className="p-4 grid gap-2">
-                      {files.map((file, index) => {
-                        const fileType = getFileTypeInfo(file.file.name)
+                {processing && (
+                  <div className="space-y-2 mt-4 p-4 border rounded-md bg-indigo-50 border-indigo-100">
+                    <div className="flex justify-between text-sm">
+                      <span className="flex items-center">
+                        <InfoIcon className="h-4 w-4 mr-2 text-indigo-500 animate-pulse" />
+                        <span className="text-indigo-700">{processingStatus}</span>
+                      </span>
+                      <span className="font-medium text-indigo-700">{Math.round(progress)}%</span>
+                    </div>
+                    <Progress value={progress} className="h-2" indicatorClassName="bg-indigo-500" />
+                  </div>
+                )}
+
+                {error && (
+                  <Alert variant="destructive" className="mt-4 bg-red-50 border-red-200 text-red-700">
+                    <AlertCircleIcon className="h-4 w-4 mr-2 text-red-500" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+              </TabsContent>
+
+              <TabsContent value="results" className="space-y-6">
+                {processedFiles && processedFiles.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium text-indigo-700">Fichiers traités</h3>
+                      <div className="flex gap-2">
+                        <Badge variant="outline" className="font-normal bg-green-100 text-green-700 border-green-200">
+                          {processedFiles.length} {processedFiles.length > 1 ? "fichiers" : "fichier"}
+                        </Badge>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={downloadAllCSV}
+                          className="h-8 bg-green-50 text-green-600 border-green-200 hover:bg-green-100 hover:text-green-700"
+                        >
+                          <DownloadIcon className="h-3.5 w-3.5 mr-1" />
+                          Tout télécharger
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={saveAllToDatabase}
+                          className="h-8 bg-indigo-50 text-indigo-600 border-indigo-200 hover:bg-indigo-100 hover:text-indigo-700"
+                        >
+                          <SaveIcon className="h-3.5 w-3.5 mr-1" />
+                          Tout enregistrer en BDD
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4">
+                      {processedFiles.map((fileData, index) => {
+                        const fileType = getFileTypeInfo(fileData.fileName)
                         const FileTypeIcon = fileType.icon
+                        const isSaved = isFileSaved(fileData.fileName)
+                        const isSaving = savingToDb[fileData.fileName]
 
                         return (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between p-3 bg-white rounded-md hover:bg-indigo-50/50 transition-colors border border-indigo-100/50"
-                          >
-                            <div className="flex items-center space-x-3">
-                              <div className={`p-2 rounded-md ${fileType.color}`}>
-                                <FileTypeIcon className="h-5 w-5" />
-                              </div>
-                              <div>
-                                <span className="text-sm font-medium truncate max-w-[300px] block text-gray-800">
-                                  {file.file.name}
-                                </span>
+                          <Card key={index} className="overflow-hidden border-indigo-100 shadow-sm">
+                            <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 py-3">
+                              <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs text-gray-500">{(file.file.size / 1024).toFixed(1)} KB</span>
-                                  <Badge variant="outline" className={`text-xs py-0 h-5 ${fileType.color}`}>
-                                    {fileType.label}
+                                  <div className={`p-1.5 rounded-md ${fileType.color}`}>
+                                    <FileTypeIcon className="h-4 w-4" />
+                                  </div>
+                                  <h4 className="font-medium text-sm text-indigo-700">{fileData.fileName}</h4>
+                                  <Badge className="bg-green-100 text-green-700 border-none">
+                                    {fileData.data.length} lignes
                                   </Badge>
+                                  {isSaved && (
+                                    <Badge className="bg-indigo-100 text-indigo-700 border-none">
+                                      <DatabaseIcon className="h-3 w-3 mr-1" />
+                                      Enregistré en BDD
+                                    </Badge>
+                                  )}
                                 </div>
-                              </div>
-                            </div>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => removeFile(index)}
-                                    className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                  >
-                                    <XIcon className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Supprimer</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </ScrollArea>
-
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={clearAll}
-                      disabled={processing}
-                      className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-                    >
-                      <XIcon className="h-4 w-4 mr-2" />
-                      Tout effacer
-                    </Button>
-                    <Button
-                      onClick={processFiles}
-                      disabled={processing || files.length === 0}
-                      className="bg-indigo-600 hover:bg-indigo-700"
-                    >
-                      {processing ? (
-                        <>
-                          <RefreshCwIcon className="h-4 w-4 mr-2 animate-spin" />
-                          Traitement en cours...
-                        </>
-                      ) : (
-                        <>
-                          <ArrowRightIcon className="h-4 w-4 mr-2" />
-                          Traiter les fichiers
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {processing && (
-                <div className="space-y-2 mt-4 p-4 border rounded-md bg-indigo-50 border-indigo-100">
-                  <div className="flex justify-between text-sm">
-                    <span className="flex items-center">
-                      <InfoIcon className="h-4 w-4 mr-2 text-indigo-500 animate-pulse" />
-                      <span className="text-indigo-700">{processingStatus}</span>
-                    </span>
-                    <span className="font-medium text-indigo-700">{Math.round(progress)}%</span>
-                  </div>
-                  <Progress value={progress} className="h-2" indicatorclassname="bg-indigo-500" />
-                </div>
-              )}
-
-              {error && (
-                <Alert variant="destructive" className="mt-4 bg-red-50 border-red-200 text-red-700">
-                  <AlertCircleIcon className="h-4 w-4 mr-2 text-red-500" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-            </TabsContent>
-
-            <TabsContent value="results" className="space-y-6">
-              {processedFiles && processedFiles.length > 0 && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium text-indigo-700">Fichiers traités</h3>
-                    <div className="flex gap-2">
-                      <Badge variant="outline" className="font-normal bg-green-100 text-green-700 border-green-200">
-                        {processedFiles.length} {processedFiles.length > 1 ? "fichiers" : "fichier"}
-                      </Badge>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={downloadAllCSV}
-                        className="h-8 bg-green-50 text-green-600 border-green-200 hover:bg-green-100 hover:text-green-700"
-                      >
-                        <DownloadIcon className="h-3.5 w-3.5 mr-1" />
-                        Tout télécharger
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={saveAllToDatabase}
-                        className="h-8 bg-indigo-50 text-indigo-600 border-indigo-200 hover:bg-indigo-100 hover:text-indigo-700"
-                      >
-                        <SaveIcon className="h-3.5 w-3.5 mr-1" />
-                        Tout enregistrer en BDD
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4">
-                    {processedFiles.map((fileData, index) => {
-                      const fileType = getFileTypeInfo(fileData.fileName)
-                      const FileTypeIcon = fileType.icon
-                      const isSaved = isFileSaved(fileData.fileName)
-                      const isSaving = savingToDb[fileData.fileName]
-
-                      return (
-                        <Card key={index} className="overflow-hidden border-indigo-100 shadow-sm">
-                          <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 py-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <div className={`p-1.5 rounded-md ${fileType.color}`}>
-                                  <FileTypeIcon className="h-4 w-4" />
-                                </div>
-                                <h4 className="font-medium text-sm text-indigo-700">{fileData.fileName}</h4>
-                                <Badge className="bg-green-100 text-green-700 border-none">
-                                  {fileData.data.length} lignes
-                                </Badge>
-                                {isSaved && (
-                                  <Badge className="bg-indigo-100 text-indigo-700 border-none">
-                                    <DatabaseIcon className="h-3 w-3 mr-1" />
-                                    Enregistré en BDD
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="flex gap-2">
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => downloadCSV(fileData)}
-                                        className="h-8 w-8 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100"
-                                      >
-                                        <DownloadIcon className="h-4 w-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>
-                                        Télécharger {fileData.fileName.substring(0, fileData.fileName.lastIndexOf("."))}
-                                        _mapped.csv
-                                      </p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-
-                                {!isSaved && (
+                                <div className="flex gap-2">
                                   <TooltipProvider>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <Button
                                           variant="ghost"
                                           size="icon"
-                                          onClick={() => saveToDatabase(fileData)}
-                                          disabled={isSaving}
+                                          onClick={() => downloadCSV(fileData)}
                                           className="h-8 w-8 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100"
                                         >
-                                          {isSaving ? (
-                                            <RefreshCwIcon className="h-4 w-4 animate-spin" />
-                                          ) : (
-                                            <SaveIcon className="h-4 w-4" />
-                                          )}
+                                          <DownloadIcon className="h-4 w-4" />
                                         </Button>
                                       </TooltipTrigger>
                                       <TooltipContent>
-                                        <p>Enregistrer en base de données</p>
+                                        <p>
+                                          Télécharger {fileData.fileName.substring(0, fileData.fileName.lastIndexOf("."))}
+                                          _mapped.csv
+                                        </p>
                                       </TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
-                                )}
+
+                                  {!isSaved && (
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => saveToDatabase(fileData)}
+                                            disabled={isSaving}
+                                            className="h-8 w-8 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100"
+                                          >
+                                            {isSaving ? (
+                                              <RefreshCwIcon className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                              <SaveIcon className="h-4 w-4" />
+                                            )}
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Enregistrer en base de données</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          </CardHeader>
-                          <CardContent className="p-0">
-                            <div className="p-4">
-                              <DataPreview data={fileData.data.slice(0, 5)} />
-                              <p className="text-xs text-indigo-500 mt-2 flex items-center">
-                                <InfoIcon className="h-3 w-3 mr-1" />
-                                Aperçu des 5 premières lignes sur {fileData.data.length} au total.
-                              </p>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )
-                    })}
+                            </CardHeader>
+                            <CardContent className="p-0">
+                              <div className="p-4">
+                                <DataPreview data={fileData.data.slice(0, 5)} />
+                                <p className="text-xs text-indigo-500 mt-2 flex items-center">
+                                  <InfoIcon className="h-3 w-3 mr-1" />
+                                  Aperçu des 5 premières lignes sur {fileData.data.length} au total.
+                                </p>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )
+                      })}
+                    </div>
+
+                    <CardFooter className="flex justify-end gap-2 mt-4 pt-4 border-t border-indigo-100">
+                      <Button
+                        variant="outline"
+                        onClick={clearAll}
+                        className="bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                      >
+                        <RefreshCwIcon className="h-4 w-4 mr-2" />
+                        Nouvelle importation
+                      </Button>
+                    </CardFooter>
                   </div>
+                )}
 
-                  <CardFooter className="flex justify-end gap-2 mt-4 pt-4 border-t border-indigo-100">
-                    <Button
-                      variant="outline"
-                      onClick={clearAll}
-                      className="bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-                    >
-                      <RefreshCwIcon className="h-4 w-4 mr-2" />
-                      Nouvelle importation
-                    </Button>
-                  </CardFooter>
-                </div>
-              )}
+                {validationErrors.length > 0 && (
+                  <div className="mt-4">
+                    <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-700">
+                      <AlertCircleIcon className="h-4 w-4 mr-2 text-red-500" />
+                      <AlertDescription>
+                        Des erreurs ont été détectées dans certains fichiers. Veuillez vérifier le format et réessayer.
+                      </AlertDescription>
+                    </Alert>
 
-              {validationErrors.length > 0 && (
-                <div className="mt-4">
-                  <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-700">
-                    <AlertCircleIcon className="h-4 w-4 mr-2 text-red-500" />
-                    <AlertDescription>
-                      Des erreurs ont été détectées dans certains fichiers. Veuillez vérifier le format et réessayer.
-                    </AlertDescription>
-                  </Alert>
-
-                  <div className="mt-2 space-y-2">
-                    {validationErrors.map((error, index) => (
-                      <div key={index} className="p-3 border border-red-200 rounded-md bg-red-50">
-                        <p className="font-medium text-sm text-red-700">{error.fileName}</p>
-                        <ul className="mt-1 text-xs space-y-1">
-                          {error.errors.map((err, i) => (
-                            <li key={i} className="text-red-600">
-                              • {err.message}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
+                    <div className="mt-2 space-y-2">
+                      {validationErrors.map((error, index) => (
+                        <div key={index} className="p-3 border border-red-200 rounded-md bg-red-50">
+                          <p className="font-medium text-sm text-red-700">{error.fileName}</p>
+                          <ul className="mt-1 text-xs space-y-1">
+                            {error.errors.map((err, i) => (
+                              <li key={i} className="text-red-600">
+                                • {err.message}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-            </TabsContent>
+                )}
+              </TabsContent>
 
-            <TabsContent value="database" className="space-y-6">
-              <DatabaseView />
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+              <TabsContent value="database" className="space-y-6">
+                <DatabaseView />
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
+      <div
+    className =
+      "fixed bottom-8 right-8" >
+      
+        <TooltipProvider>
+     
+          <Tooltip>
+            
+            <TooltipTrigger asChild>
+              <a
+                href="/analyse"
+                className="flex items-center justify-center w-16 h-16 rounded-full bg-indigo-600 text-white shadow-lg hover:bg-indigo-700 transition-colors"
+              >
+                <div className="relative">
+                  <BarChartIcon className="h-6 w-6" />
+                </div>
+              </a>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+              <p>Aller à l'analyse des données</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      
+      </div>
     </div>
   )
 }
+

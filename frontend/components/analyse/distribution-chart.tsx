@@ -1,55 +1,21 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { FileDataResponse } from "../api-service"
+import type { DistributionDataPoint } from "../api-service"
 import { RefreshCwIcon } from "lucide-react"
 
 interface DistributionChartProps {
-  data: FileDataResponse[]
+  data: DistributionDataPoint[]
   loading: boolean
 }
 
 export function DistributionChart({ data, loading }: DistributionChartProps) {
-  const [chartData, setChartData] = useState<any[]>([])
   const [distributionField, setDistributionField] = useState<string>("etat")
 
-  useEffect(() => {
-    if (loading || data.length === 0) return
-
-    // Préparer les données pour le graphique
-    const groupedData = groupDataByField(data, distributionField)
-    setChartData(groupedData)
-  }, [data, distributionField, loading])
-
-  // Fonction pour grouper les données par champ
-  const groupDataByField = (data: FileDataResponse[], field: string) => {
-    const grouped: Record<string, number> = {}
-
-    data.forEach((item) => {
-      const value = item[field as keyof FileDataResponse]
-      const key = value?.toString() || "Non défini"
-
-      if (!grouped[key]) {
-        grouped[key] = 0
-      }
-
-      grouped[key] += 1
-    })
-
-    // Convertir en tableau et trier par nombre décroissant
-    return Object.entries(grouped)
-      .map(([key, value]) => ({
-        label: key,
-        count: value,
-        percentage: (value / data.length) * 100,
-      }))
-      .sort((a, b) => b.count - a.count)
-  }
-
   // Calculer la valeur maximale pour les barres
-  const maxCount = Math.max(...chartData.map((d) => d.count), 0)
+  const maxCount = Math.max(...data.map((d) => d.count), 0)
 
   // Générer un dégradé de couleurs pour les barres
   const getBarColor = (index: number) => {
@@ -92,13 +58,13 @@ export function DistributionChart({ data, loading }: DistributionChartProps) {
             <RefreshCwIcon className="h-8 w-8 animate-spin text-indigo-500" />
             <p className="mt-4 text-indigo-500">Chargement des données...</p>
           </div>
-        ) : chartData.length === 0 ? (
+        ) : data.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64">
             <p className="text-gray-500">Aucune donnée disponible</p>
           </div>
         ) : (
           <div className="space-y-4 mt-4">
-            {chartData.slice(0, 10).map((item, index) => (
+            {data.slice(0, 10).map((item, index) => (
               <div key={index} className="space-y-1">
                 <div className="flex justify-between text-sm">
                   <span className="font-medium text-indigo-700 truncate max-w-[70%]" title={item.label}>
@@ -117,9 +83,9 @@ export function DistributionChart({ data, loading }: DistributionChartProps) {
               </div>
             ))}
 
-            {chartData.length > 10 && (
+            {data.length > 10 && (
               <div className="text-xs text-center text-indigo-600 mt-2">
-                Affichage des 10 premières valeurs sur {chartData.length} au total
+                Affichage des 10 premières valeurs sur {data.length} au total
               </div>
             )}
           </div>

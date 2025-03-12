@@ -9,17 +9,24 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { AlertCircleIcon, DatabaseIcon, SearchIcon, TrashIcon, RefreshCwIcon } from "lucide-react"
+import { AlertCircleIcon, DatabaseIcon, SearchIcon, TrashIcon, RefreshCwIcon, ArrowLeftIcon, BarChartIcon } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useRouter } from "next/navigation"
 
 export function DatabaseView() {
   const [data, setData] = useState<FileDataResponse[]>([])
   const [files, setFiles] = useState<string[]>([])
-  const [selectedFile, setSelectedFile] = useState<string>("")
+  const [selectedFile, setSelectedFile] = useState<string>("all")
   const [searchTerm, setSearchTerm] = useState<string>("")
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false)
+  const [page, setPage] = useState<number>(1)
+  const [pageSize, setPageSize] = useState<number>(100)
+  const [totalItems, setTotalItems] = useState<number>(0)
+  const [totalPages, setTotalPages] = useState<number>(1)
+
+  const router = useRouter()
 
   // Colonnes à afficher
   const columns = ["reference", "id_lin", "id_ccu", "etat", "creation", "mise_a_jour", "file_name", "import_date"]
@@ -29,8 +36,15 @@ export function DatabaseView() {
     setLoading(true)
     setError(null)
     try {
-      const result = await getFileDataFromAPI(searchTerm, selectedFile)
-      setData(result)
+      const result = await getFileDataFromAPI(
+        searchTerm,
+        selectedFile === "all" ? undefined : selectedFile,
+        page,
+        pageSize,
+      )
+      setData(result.items)
+      setTotalItems(result.total)
+      setTotalPages(result.pages)
     } catch (err) {
       setError("Erreur lors du chargement des données")
       console.error(err)
@@ -82,10 +96,11 @@ export function DatabaseView() {
   // Recharger les données lorsque les filtres changent
   useEffect(() => {
     loadData()
-  }, [selectedFile])
+  }, [selectedFile, page, pageSize])
 
   // Formater la date pour l'affichage
   const formatDate = (dateString: string) => {
+    if (!dateString) return "-"
     const date = new Date(dateString)
     return date.toLocaleString()
   }
@@ -93,13 +108,26 @@ export function DatabaseView() {
   return (
     <Card className="border-t-4 border-t-indigo-500 shadow-md">
       <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50">
-        <CardTitle className="flex items-center gap-2 text-indigo-700">
-          <DatabaseIcon className="h-6 w-6 text-indigo-500" />
-          Données en Base
-        </CardTitle>
-        <CardDescription className="text-indigo-500">
-          Consultez et gérez les données importées dans la base de données
-        </CardDescription>
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-indigo-700">
+              <DatabaseIcon className="h-6 w-6 text-indigo-500" />
+              Données en Base
+            </CardTitle>
+            <CardDescription className="text-indigo-500">
+              Consultez et gérez les données importées dans la base de données
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push("/analyse")}
+            className="border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+          >
+            <BarChartIcon className="h-4 w-4 mr-2" />
+            Analyse
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="pt-6 space-y-6">
         {/* Filtres et actions */}
@@ -234,7 +262,35 @@ export function DatabaseView() {
 
         {/* Pagination et informations */}
         <div className="flex justify-between items-center text-sm text-indigo-600">
-          <span>Total: {data.length} enregistrements</span>
+          <span>Total: {totalItems} enregistrements</span>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1 || loading}
+                className="border-indigo-200"
+              >
+                Précédent
+              </Button>
+
+              <span>
+                Page {page} sur {totalPages}
+              </span>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages || loading}
+                className="border-indigo-200"
+              >
+                Suivant
+              </Button>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

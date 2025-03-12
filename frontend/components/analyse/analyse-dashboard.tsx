@@ -3,13 +3,23 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { BarChartIcon, PieChartIcon, TableIcon, CalendarIcon } from "lucide-react"
+import { BarChartIcon, PieChartIcon, TableIcon, CalendarIcon, ArrowLeftIcon } from "lucide-react"
 import { AnalyseFilters } from "./analyse-filters"
 import { DataTable } from "./data-table"
 import { TimeSeriesChart } from "./time-series-chart"
 import { DistributionChart } from "./distribution-chart"
 import { StatCards } from "./stat-cards"
-import { getFileDataFromAPI, getUniqueFilesFromAPI, type FileDataResponse } from "../api-service"
+import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation"
+import {
+  getFileDataFromAPI,
+  getUniqueFilesFromAPI,
+  getAggregatedData,
+  getDistributionData,
+  getStatsData,
+  type FileDataResponse,
+  type FilterParams,
+} from "../api-service"
 
 export function AnalyseDashboard() {
   const [data, setData] = useState<FileDataResponse[]>([])
@@ -17,12 +27,18 @@ export function AnalyseDashboard() {
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<string>("apercu")
+  const router = useRouter()
 
   // Filtres
   const [selectedFile, setSelectedFile] = useState<string>("all")
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({})
   const [searchTerm, setSearchTerm] = useState<string>("")
   const [groupBy, setGroupBy] = useState<string>("jour")
+
+  // Données d'analyse
+  const [aggregatedData, setAggregatedData] = useState<any[]>([])
+  const [distributionData, setDistributionData] = useState<any[]>([])
+  const [statsData, setStatsData] = useState<any>(null)
 
   // Charger les données initiales
   useEffect(() => {
@@ -33,9 +49,12 @@ export function AnalyseDashboard() {
         const filesData = await getUniqueFilesFromAPI()
         setFiles(filesData)
 
-        // Charger les données
-        const result = await getFileDataFromAPI()
-        setData(result)
+        // Charger un aperçu des données (juste la première page)
+        const result = await getFileDataFromAPI("", undefined, 1, 10)
+        setData(result.items)
+
+        // Charger les données agrégées initiales
+        await loadAnalysisData()
       } catch (err) {
         setError("Erreur lors du chargement des données")
         console.error(err)
@@ -47,37 +66,40 @@ export function AnalyseDashboard() {
     loadInitialData()
   }, [])
 
-  // Appliquer les filtres
-  const applyFilters = async () => {
+  // Charger les données d'analyse
+  const loadAnalysisData = async () => {
     setLoading(true)
     try {
-      const result = await getFileDataFromAPI(searchTerm, selectedFile === "all" ? undefined : selectedFile)
-
-      // Filtrer par date si nécessaire
-      let filteredData = result
-      if (dateRange.from || dateRange.to) {
-        filteredData = result.filter((item) => {
-          const itemDate = new Date(item.creation)
-
-          if (dateRange.from && dateRange.to) {
-            return itemDate >= dateRange.from && itemDate <= dateRange.to
-          } else if (dateRange.from) {
-            return itemDate >= dateRange.from
-          } else if (dateRange.to) {
-            return itemDate <= dateRange.to
-          }
-
-          return true
-        })
+      const params: FilterParams = {
+        search: searchTerm,
+        fileName: selectedFile === "all" ? undefined : selectedFile,
+        dateFrom: dateRange.from?.toISOString(),
+        dateTo: dateRange.to?.toISOString(),
+        groupBy: groupBy as "jour" | "semaine" | "mois" | "annee",
       }
 
-      setData(filteredData)
+      // Charger les données agrégées
+      const aggregated = await getAggregatedData(params)
+      setAggregatedData(aggregated)
+
+      // Charger les données de distribution
+      const distribution = await getDistributionData("etat", params)
+      setDistributionData(distribution)
+
+      // Charger les statistiques
+      const stats = await getStatsData(params)
+      setStatsData(stats)
     } catch (err) {
-      setError("Erreur lors de l'application des filtres")
+      setError("Erreur lors du chargement des données d'analyse")
       console.error(err)
     } finally {
       setLoading(false)
     }
+  }
+
+  // Appliquer les filtres
+  const applyFilters = async () => {
+    await loadAnalysisData()
   }
 
   // Réinitialiser les filtres
@@ -91,8 +113,9 @@ export function AnalyseDashboard() {
     const loadData = async () => {
       setLoading(true)
       try {
-        const result = await getFileDataFromAPI()
-        setData(result)
+        const result = await getFileDataFromAPI("", undefined, 1, 10)
+        setData(result.items)
+        await loadAnalysisData()
       } catch (err) {
         setError("Erreur lors du chargement des données")
         console.error(err)
@@ -108,13 +131,26 @@ export function AnalyseDashboard() {
     <div className="space-y-6">
       <Card className="border-t-4 border-t-indigo-500 shadow-md">
         <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50">
-          <CardTitle className="flex items-center gap-2 text-indigo-700">
-            <BarChartIcon className="h-6 w-6 text-indigo-500" />
-            Analyse et Restitution des Données
-          </CardTitle>
-          <CardDescription className="text-indigo-500">
-            Explorez, filtrez et analysez les données importées
-          </CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-indigo-700">
+                <BarChartIcon className="h-6 w-6 text-indigo-500" />
+                Analyse et Restitution des Données
+              </CardTitle>
+              <CardDescription className="text-indigo-500">
+                Explorez, filtrez et analysez les données importées
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/")}
+              className="border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+            >
+              <ArrowLeftIcon className="h-4 w-4 mr-2" />
+              Retour à l'accueil
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent className="pt-6 space-y-6">
@@ -135,7 +171,7 @@ export function AnalyseDashboard() {
           />
 
           {/* Statistiques générales */}
-          <StatCards data={data} loading={loading} />
+          <StatCards data={data} loading={loading} statsData={statsData} />
 
           {/* Onglets d'analyse */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -161,15 +197,21 @@ export function AnalyseDashboard() {
             </TabsList>
 
             <TabsContent value="apercu" className="space-y-4">
-              <DataTable data={data} loading={loading} />
+              <DataTable
+                data={data}
+                loading={loading}
+                searchTerm={searchTerm}
+                selectedFile={selectedFile}
+                dateRange={dateRange}
+              />
             </TabsContent>
 
             <TabsContent value="evolution" className="space-y-4">
-              <TimeSeriesChart data={data} groupBy={groupBy} loading={loading} />
+              <TimeSeriesChart data={aggregatedData} groupBy={groupBy} loading={loading} />
             </TabsContent>
 
             <TabsContent value="distribution" className="space-y-4">
-              <DistributionChart data={data} loading={loading} />
+              <DistributionChart data={distributionData} loading={loading} />
             </TabsContent>
           </Tabs>
         </CardContent>

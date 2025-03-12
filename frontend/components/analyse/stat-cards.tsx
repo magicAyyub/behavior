@@ -1,6 +1,5 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import type { FileDataResponse } from "../api-service"
 import { FileIcon, ClockIcon, DatabaseIcon, UsersIcon } from "lucide-react"
@@ -8,41 +7,21 @@ import { FileIcon, ClockIcon, DatabaseIcon, UsersIcon } from "lucide-react"
 interface StatCardsProps {
   data: FileDataResponse[]
   loading: boolean
+  statsData?: any
 }
 
-export function StatCards({ data, loading }: StatCardsProps) {
-  const [stats, setStats] = useState({
-    totalEntries: 0,
-    uniqueFiles: 0,
-    latestEntry: "",
-    uniqueSources: 0,
-  })
-
-  useEffect(() => {
-    if (loading || data.length === 0) return
-
-    // Calculer les statistiques
-    const uniqueFiles = new Set(data.map((item) => item.file_name)).size
-    const uniqueSources = new Set(data.map((item) => item.source).filter(Boolean)).size
-
-    // Trouver la date la plus récente
-    let latestDate = new Date(0)
-    data.forEach((item) => {
-      if (item.creation) {
-        const date = new Date(item.creation)
-        if (!isNaN(date.getTime()) && date > latestDate) {
-          latestDate = date
-        }
-      }
-    })
-
-    setStats({
-      totalEntries: data.length,
-      uniqueFiles,
-      latestEntry: latestDate.getTime() > 0 ? latestDate.toLocaleDateString() : "-",
-      uniqueSources,
-    })
-  }, [data, loading])
+export function StatCards({ data, loading, statsData }: StatCardsProps) {
+  // Utiliser les statistiques de l'API si disponibles, sinon calculer à partir des données locales
+  const totalEntries = statsData?.total_entries || data.length
+  const uniqueFiles = statsData?.unique_files || new Set(data.map((item) => item.file_name)).size
+const latestEntry =
+    statsData?.latest_entry ||
+    (data.length > 0 && data[0].creation
+        ? new Date(
+                Math.max(...data.filter((item) => item.creation).map((item) => new Date(item.creation).getTime())),
+            ).toLocaleDateString() || "(vide)"
+        : "(vide)")
+  const uniqueSources = statsData?.unique_sources || new Set(data.map((item) => item.source).filter(Boolean)).size
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -53,9 +32,7 @@ export function StatCards({ data, loading }: StatCardsProps) {
           </div>
           <div>
             <p className="text-sm text-indigo-600 font-medium">Total des entrées</p>
-            <h3 className="text-2xl font-bold text-indigo-700">
-              {loading ? "..." : stats.totalEntries.toLocaleString()}
-            </h3>
+            <h3 className="text-2xl font-bold text-indigo-700">{loading ? "..." : totalEntries.toLocaleString()}</h3>
           </div>
         </CardContent>
       </Card>
@@ -67,9 +44,7 @@ export function StatCards({ data, loading }: StatCardsProps) {
           </div>
           <div>
             <p className="text-sm text-purple-600 font-medium">Fichiers uniques</p>
-            <h3 className="text-2xl font-bold text-purple-700">
-              {loading ? "..." : stats.uniqueFiles.toLocaleString()}
-            </h3>
+            <h3 className="text-2xl font-bold text-purple-700">{loading ? "..." : uniqueFiles.toLocaleString()}</h3>
           </div>
         </CardContent>
       </Card>
@@ -81,7 +56,7 @@ export function StatCards({ data, loading }: StatCardsProps) {
           </div>
           <div>
             <p className="text-sm text-blue-600 font-medium">Dernière entrée</p>
-            <h3 className="text-xl font-bold text-blue-700">{loading ? "..." : stats.latestEntry}</h3>
+            <h3 className="text-xl font-bold text-blue-700">{loading ? "..." : latestEntry}</h3>
           </div>
         </CardContent>
       </Card>
@@ -93,9 +68,7 @@ export function StatCards({ data, loading }: StatCardsProps) {
           </div>
           <div>
             <p className="text-sm text-emerald-600 font-medium">Sources uniques</p>
-            <h3 className="text-2xl font-bold text-emerald-700">
-              {loading ? "..." : stats.uniqueSources.toLocaleString()}
-            </h3>
+            <h3 className="text-2xl font-bold text-emerald-700">{loading ? "..." : uniqueSources.toLocaleString()}</h3>
           </div>
         </CardContent>
       </Card>

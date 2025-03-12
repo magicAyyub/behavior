@@ -27,6 +27,7 @@ interface AnalyseFiltersProps {
   loading: boolean
 }
 
+// Update the filters layout to prevent overlap
 export function AnalyseFilters({
   files,
   selectedFile,
@@ -44,9 +45,10 @@ export function AnalyseFilters({
   return (
     <Card className="bg-indigo-50/50 border-indigo-100">
       <CardContent className="p-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 flex-1">
-            {/* Sélection de fichier */}
+        <div className="space-y-6">
+          {/* First row: File and Period selection */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* File selection */}
             <div>
               <label className="text-sm font-medium text-indigo-700 mb-1 block">Fichier</label>
               <Select value={selectedFile} onValueChange={setSelectedFile}>
@@ -64,7 +66,7 @@ export function AnalyseFilters({
               </Select>
             </div>
 
-            {/* Sélection de période */}
+            {/* Period selection */}
             <div>
               <label className="text-sm font-medium text-indigo-700 mb-1 block">Période</label>
               <div className="flex gap-2">
@@ -115,8 +117,11 @@ export function AnalyseFilters({
                 </Popover>
               </div>
             </div>
+          </div>
 
-            {/* Recherche */}
+          {/* Second row: Search and Group by */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Search */}
             <div>
               <label className="text-sm font-medium text-indigo-700 mb-1 block">Recherche</label>
               <div className="relative">
@@ -130,7 +135,7 @@ export function AnalyseFilters({
               </div>
             </div>
 
-            {/* Groupement */}
+            {/* Group by */}
             <div>
               <label className="text-sm font-medium text-indigo-700 mb-1 block">Grouper par</label>
               <Select value={groupBy} onValueChange={setGroupBy}>
@@ -147,8 +152,8 @@ export function AnalyseFilters({
             </div>
           </div>
 
-          {/* Boutons d'action */}
-          <div className="flex gap-2 items-end">
+          {/* Action buttons */}
+          <div className="flex justify-end gap-2">
             <Button
               variant="outline"
               onClick={resetFilters}
@@ -159,8 +164,17 @@ export function AnalyseFilters({
               Réinitialiser
             </Button>
             <Button onClick={applyFilters} disabled={loading} className="bg-indigo-600 hover:bg-indigo-700">
-              <FilterIcon className="h-4 w-4 mr-2" />
-              {loading ? "Chargement..." : "Appliquer"}
+              {loading ? (
+                <>
+                  <RefreshCwIcon className="h-4 w-4 mr-2 animate-spin" />
+                  Chargement...
+                </>
+              ) : (
+                <>
+                  <FilterIcon className="h-4 w-4 mr-2" />
+                  Appliquer
+                </>
+              )}
             </Button>
           </div>
         </div>

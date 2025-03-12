@@ -550,15 +550,15 @@ export function FileUploader() {
 
   return (
     <div>
-      <div className="space-y-6 max-w-5xl mx-auto">
+      <div className="space-y-6 mx-auto">
         <Card className="border-t-4 border-t-indigo-500 shadow-md">
           <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50">
             <CardTitle className="flex items-center gap-2 text-indigo-700">
               <FileTextIcon className="h-6 w-6 text-indigo-500" />
-              Convertisseur de fichiers
+              Transformation et chargement des Données
             </CardTitle>
             <CardDescription className="text-indigo-500">
-              Importez vos fichiers Excel ou CSV pour les convertir au format standardisé
+              Importez vos fichiers Excel ou CSV pour les convertir au format standardisé et les charger en base de données
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
@@ -714,7 +714,7 @@ export function FileUploader() {
                       </span>
                       <span className="font-medium text-indigo-700">{Math.round(progress)}%</span>
                     </div>
-                    <Progress value={progress} className="h-2" indicatorClassName="bg-indigo-500" />
+                    <Progress value={progress} className="h-2" indicatorclassname="bg-indigo-500" />
                   </div>
                 )}
 

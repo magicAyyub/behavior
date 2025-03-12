@@ -87,7 +87,14 @@ export function TimeSeriesChart({ data, groupBy, loading }: TimeSeriesChartProps
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64">
             <RefreshCwIcon className="h-8 w-8 animate-spin text-indigo-500" />
-            <p className="mt-4 text-indigo-500">Chargement des données...</p>
+            <p className="mt-4 text-indigo-500 flex items-center">
+              Chargement des données
+              <span className="ml-1 inline-flex">
+                <span className="animate-bounce mx-0.5 delay-100">.</span>
+                <span className="animate-bounce mx-0.5 delay-200">.</span>
+                <span className="animate-bounce mx-0.5 delay-300">.</span>
+              </span>
+            </p>
           </div>
         ) : data.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64">

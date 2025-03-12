@@ -10,27 +10,28 @@ import { RefreshCwIcon, ChevronLeftIcon, ChevronRightIcon, DownloadIcon } from "
 
 interface DataTableProps {
   data: FileDataResponse[]
-  loading: boolean
-  searchTerm?: string
+  initialLoading: boolean 
+  searchTerm?: string 
   selectedFile?: string
   dateRange?: { from?: Date; to?: Date }
 }
 
 export function DataTable({
   data: initialData,
-  loading: initialLoading,
+//   initialLoading,
   searchTerm,
   selectedFile,
-  dateRange,
+//   dateRange,
 }: DataTableProps) {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [sortField, setSortField] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [data, setData] = useState<FileDataResponse[]>(initialData)
-  const [loading, setLoading] = useState<boolean>(initialLoading)
+  const [loading, setLoading] = useState<boolean>(false)
   const [totalItems, setTotalItems] = useState<number>(0)
   const [totalPages, setTotalPages] = useState<number>(1)
+  const [pageLoading, setPageLoading] = useState<boolean>(false)
 
   // Colonnes à afficher
   const columns = [
@@ -46,7 +47,7 @@ export function DataTable({
   // Charger les données paginées depuis l'API
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true)
+      setPageLoading(true)
       try {
         const response = await getFileDataFromAPI(
           searchTerm,
@@ -60,7 +61,10 @@ export function DataTable({
       } catch (error) {
         console.error("Erreur lors du chargement des données:", error)
       } finally {
-        setLoading(false)
+        // simulate loading
+        setTimeout(() => {
+            setPageLoading(false)
+            }, 500)
       }
     }
 
@@ -171,11 +175,15 @@ export function DataTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {loading || pageLoading ? (
                 <TableRow>
                   <TableCell colSpan={columns.length} className="text-center py-8">
-                    <RefreshCwIcon className="h-6 w-6 animate-spin mx-auto text-indigo-500" />
-                    <p className="mt-2 text-indigo-500">Chargement des données...</p>
+                    <div className="flex flex-col items-center justify-center">
+                      <RefreshCwIcon className="h-6 w-6 animate-spin mx-auto text-indigo-500" />
+                      <p className="mt-2 text-indigo-500 flex items-center">
+                        Chargement des données
+                      </p>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : data.length === 0 ? (
@@ -186,9 +194,12 @@ export function DataTable({
                 </TableRow>
               ) : (
                 data.map((row, rowIndex) => (
-                  <TableRow key={rowIndex} className={rowIndex % 2 === 0 ? "bg-white" : "bg-indigo-50/30"}>
+                  <TableRow
+                    key={`row-${rowIndex}-${row.id}`}
+                    className={`${rowIndex % 2 === 0 ? "bg-white" : "bg-indigo-50/30"} transition-opacity duration-150 ease-in-out`}
+                  >
                     {columns.map((column) => (
-                      <TableCell key={`${rowIndex}-${column.id}`} className="px-4 py-3 text-sm">
+                      <TableCell key={`${rowIndex}-${column.id}-${row.id}`} className="px-4 py-3 text-sm">
                         {column.id === "creation" || column.id === "mise_a_jour"
                           ? formatDate(row[column.id as keyof FileDataResponse] as string)
                           : row[column.id as keyof FileDataResponse] || "-"}
@@ -215,24 +226,35 @@ export function DataTable({
               variant="outline"
               size="sm"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="border-indigo-200"
+              disabled={page === 1 || pageLoading}
+              className="border-indigo-200 flex items-center"
             >
-              <ChevronLeftIcon className="h-4 w-4" />
+              {pageLoading ? (
+                <RefreshCwIcon className="h-3 w-3 mr-1 animate-spin" />
+              ) : (
+                <ChevronLeftIcon className="h-4 w-4" />
+              )}
+              <span>Précédent</span>
             </Button>
 
-            <span className="text-sm text-indigo-600">
+            <span className="text-sm text-indigo-600 flex items-center">
               Page {page} sur {totalPages || 1}
+              {pageLoading && <RefreshCwIcon className="h-3 w-3 ml-2 animate-spin text-indigo-400" />}
             </span>
 
             <Button
               variant="outline"
               size="sm"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages || totalPages === 0}
-              className="border-indigo-200"
+              disabled={page === totalPages || totalPages === 0 || pageLoading}
+              className="border-indigo-200 flex items-center"
             >
-              <ChevronRightIcon className="h-4 w-4" />
+              <span>Suivant</span>
+              {pageLoading ? (
+                <RefreshCwIcon className="h-3 w-3 ml-1 animate-spin" />
+              ) : (
+                <ChevronRightIcon className="h-4 w-4" />
+              )}
             </Button>
           </div>
         </div>

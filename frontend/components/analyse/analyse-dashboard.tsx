@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { BarChartIcon, PieChartIcon, TableIcon, CalendarIcon, ArrowLeftIcon } from "lucide-react"
+import { BarChartIcon, PieChartIcon, TableIcon, CalendarIcon, ArrowLeftIcon, RefreshCwIcon } from "lucide-react"
 import { AnalyseFilters } from "./analyse-filters"
 import { DataTable } from "./data-table"
-import { TimeSeriesChart } from "./time-series-chart"
+// import { TimeSeriesChart } from "./time-series-chart"
 import { DistributionChart } from "./distribution-chart"
 import { StatCards } from "./stat-cards"
 import { Button } from "@/components/ui/button"
@@ -39,6 +39,9 @@ export function AnalyseDashboard() {
   const [aggregatedData, setAggregatedData] = useState<any[]>([])
   const [distributionData, setDistributionData] = useState<any[]>([])
   const [statsData, setStatsData] = useState<any>(null)
+
+  // Ajouter un état de transition pour les changements d'onglets
+  const [tabTransition, setTabTransition] = useState<boolean>(false)
 
   // Charger les données initiales
   useEffect(() => {
@@ -97,9 +100,15 @@ export function AnalyseDashboard() {
     }
   }
 
-  // Appliquer les filtres
+  // Modifier la fonction applyFilters pour ajouter un retour visuel
   const applyFilters = async () => {
-    await loadAnalysisData()
+    setLoading(true)
+    try {
+      await loadAnalysisData()
+    } catch (err) {
+      setError("Erreur lors de l'application des filtres")
+      console.error(err)
+    }
   }
 
   // Réinitialiser les filtres
@@ -125,6 +134,16 @@ export function AnalyseDashboard() {
     }
 
     loadData()
+  }
+
+  // Modifier la fonction qui change d'onglet pour ajouter une transition
+  const handleTabChange = (value: string) => {
+    setTabTransition(true)
+    // Simuler un délai de chargement pour une meilleure UX
+    setTimeout(() => {
+      setActiveTab(value)
+      setTabTransition(false)
+    }, 300)
   }
 
   return (
@@ -174,19 +193,19 @@ export function AnalyseDashboard() {
           <StatCards data={data} loading={loading} statsData={statsData} />
 
           {/* Onglets d'analyse */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid grid-cols-3 mb-6 bg-indigo-50">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+            <TabsList className="grid grid-cols-2 mb-6 bg-indigo-50">
               <TabsTrigger value="apercu" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
                 <TableIcon className="h-4 w-4 mr-2" />
                 Aperçu des données
               </TabsTrigger>
-              <TabsTrigger
+              {/* <TabsTrigger
                 value="evolution"
                 className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white"
               >
                 <CalendarIcon className="h-4 w-4 mr-2" />
                 Évolution temporelle
-              </TabsTrigger>
+              </TabsTrigger> */}
               <TabsTrigger
                 value="distribution"
                 className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white"
@@ -196,23 +215,34 @@ export function AnalyseDashboard() {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="apercu" className="space-y-4">
-              <DataTable
-                data={data}
-                loading={loading}
-                searchTerm={searchTerm}
-                selectedFile={selectedFile}
-                dateRange={dateRange}
-              />
-            </TabsContent>
+            {/* Ajouter un indicateur de transition entre les onglets */}
+            {tabTransition && (
+              <div className="flex justify-center py-8">
+                <RefreshCwIcon className="h-8 w-8 animate-spin text-indigo-500" />
+              </div>
+            )}
 
-            <TabsContent value="evolution" className="space-y-4">
-              <TimeSeriesChart data={aggregatedData} groupBy={groupBy} loading={loading} />
-            </TabsContent>
+            {!tabTransition && (
+              <>
+                <TabsContent value="apercu" className="space-y-4">
+                  <DataTable
+                    data={data}
+                    loading={loading}
+                    searchTerm={searchTerm}
+                    selectedFile={selectedFile}
+                    dateRange={dateRange}
+                  />
+                </TabsContent>
+{/* 
+                <TabsContent value="evolution" className="space-y-4">
+                  <TimeSeriesChart data={aggregatedData} groupBy={groupBy} loading={loading} />
+                </TabsContent> */}
 
-            <TabsContent value="distribution" className="space-y-4">
-              <DistributionChart data={distributionData} loading={loading} />
-            </TabsContent>
+                <TabsContent value="distribution" className="space-y-4">
+                  <DistributionChart data={distributionData} loading={loading} />
+                </TabsContent>
+              </>
+            )}
           </Tabs>
         </CardContent>
       </Card>

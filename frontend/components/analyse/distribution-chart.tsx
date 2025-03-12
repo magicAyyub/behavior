@@ -56,7 +56,14 @@ export function DistributionChart({ data, loading }: DistributionChartProps) {
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64">
             <RefreshCwIcon className="h-8 w-8 animate-spin text-indigo-500" />
-            <p className="mt-4 text-indigo-500">Chargement des données...</p>
+            <p className="mt-4 text-indigo-500 flex items-center">
+              Chargement des données
+              <span className="ml-1 inline-flex loading-dots">
+                <span className="animate-bounce mx-0.5">.</span>
+                <span className="animate-bounce mx-0.5 animation-delay-200">.</span>
+                <span className="animate-bounce mx-0.5 animation-delay-400">.</span>
+              </span>
+            </p>
           </div>
         ) : data.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64">
@@ -76,7 +83,7 @@ export function DistributionChart({ data, loading }: DistributionChartProps) {
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2.5">
                   <div
-                    className={`h-2.5 rounded-full ${getBarColor(index)}`}
+                    className={`h-2.5 rounded-full ${getBarColor(index)} transition-all duration-500 ease-out`}
                     style={{ width: `${(item.count / maxCount) * 100}%` }}
                   ></div>
                 </div>

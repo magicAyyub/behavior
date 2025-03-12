@@ -6,25 +6,25 @@ from sqlalchemy.sql import func
 from .database import Base
 
 
-# Table des enregistrements (fichiers CSV importés)
-class Enregistrement(Base):
-    __tablename__ = "enregistrements"
-
+class FileData(Base):
+    __tablename__ = "file_data"
+    
     id = Column(Integer, primary_key=True, index=True)
-    reference = Column(String, nullable=False)
-    id_lin = Column(String, nullable=False)
-    id_ccu = Column(String, nullable=False)
-    etat = Column(String, nullable=False)
-    creation = Column(DateTime, nullable=False)
-    mise_a_jour = Column(DateTime, nullable=False)
-    idrh = Column(String, nullable=False)
-    device_id = Column(String, nullable=False)
-    retour_metier = Column(Text, nullable=True)
-    commentaires_cloture = Column(Text, nullable=True)
-    nom_bureau_poste = Column(String, nullable=False)
-    regate = Column(String, nullable=False)
-    source = Column(String, nullable=False)
-    solution_scan = Column(String, nullable=False)
-    rg = Column(String, nullable=False)
-    ruo = Column(String, nullable=False)
-    imported_at = Column(TIMESTAMP, server_default=func.current_timestamp())
+    reference = Column(String, index=True)
+    id_lin = Column(String)
+    id_ccu = Column(String)
+    etat = Column(String)
+    creation = Column(String)
+    mise_a_jour = Column(String)
+    idrh = Column(String)
+    device_id = Column(String)
+    retour_metier = Column(Text)
+    commentaires_cloture = Column(Text)
+    nom_bureau_poste = Column(String)
+    regate = Column(String)
+    source = Column(String)
+    solution_scan = Column(String)
+    rg = Column(String)
+    ruo = Column(String)
+    file_name = Column(String)  # Pour tracer l'origine des données
+    import_date = Column(DateTime)  # Date d'importation

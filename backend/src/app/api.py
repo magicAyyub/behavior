@@ -4,16 +4,14 @@ This module contains the FastAPI application and its configuration.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
 from sqlalchemy import inspect
-from src.utils.database import engine, get_db
+from src.utils.database import engine
 import src.utils.models as models
-from src.app.routes import enregistrement
+from src.app.routes import file_data
 from src.utils.settings import ORIGINS
 
 
-# models.Base.metadata.create_all(bind=engine) 
-enregistrement_router = enregistrement.router
+file_data_router = file_data.router
 
 def create_tables_if_not_exist():
     """
@@ -26,7 +24,7 @@ def create_tables_if_not_exist():
 
     # List of all model classes
     model_classes = [
-        models.Enregistrement,
+        models.FileData,
     ]
     for model_class in model_classes:
         # Check if table already exists
@@ -53,7 +51,7 @@ app.add_middleware(
 )
 
 # Include all routes
-app.include_router(enregistrement_router)
+app.include_router(file_data_router)
 
 
 # Root endpoint to verify API connection

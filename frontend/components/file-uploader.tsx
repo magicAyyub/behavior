@@ -15,6 +15,9 @@ import {
   FileSpreadsheetIcon,
   ArrowRightIcon,
   RefreshCwIcon,
+  DatabaseIcon,
+  SaveIcon,
+  BarChartIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -25,6 +28,8 @@ import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { DataPreview } from "./data-preview"
+import { DatabaseView } from "./database-view"
+import { sendFileDataToAPI } from "./api-service"
 
 type FileWithPreview = {
   file: File
@@ -208,6 +213,8 @@ export function FileUploader() {
   const [processedFiles, setProcessedFiles] = useState<Array<{ fileName: string; data: any[] }>>([])
   const [validationErrors, setValidationErrors] = useState<FileValidationError[]>([])
   const [activeTab, setActiveTab] = useState<string>("upload")
+  const [savingToDb, setSavingToDb] = useState<{ [key: string]: boolean }>({})
+  const [savedFiles, setSavedFiles] = useState<string[]>([])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
@@ -500,6 +507,33 @@ export function FileUploader() {
     })
   }
 
+  const saveToDatabase = async (fileData: { fileName: string; data: any[] }) => {
+    if (!fileData || fileData.data.length === 0) return
+
+    setSavingToDb((prev) => ({ ...prev, [fileData.fileName]: true }))
+    try {
+      await sendFileDataToAPI(fileData)
+      setSavedFiles((prev) => [...prev, fileData.fileName])
+    } catch (error) {
+      console.error("Erreur lors de l'enregistrement en base de données:", error)
+      setError(
+        `Erreur lors de l'enregistrement en base de données: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    } finally {
+      setSavingToDb((prev) => ({ ...prev, [fileData.fileName]: false }))
+    }
+  }
+
+  const saveAllToDatabase = async () => {
+    if (processedFiles.length === 0) return
+
+    for (const fileData of processedFiles) {
+      if (!savedFiles.includes(fileData.fileName)) {
+        await saveToDatabase(fileData)
+      }
+    }
+  }
+
   const clearAll = () => {
     files.forEach((file) => URL.revokeObjectURL(file.preview))
     setFiles([])
@@ -507,6 +541,11 @@ export function FileUploader() {
     setValidationErrors([])
     setError(null)
     setActiveTab("upload")
+    setSavedFiles([])
+  }
+
+  const isFileSaved = (fileName: string) => {
+    return savedFiles.includes(fileName)
   }
 
   return (
@@ -523,7 +562,7 @@ export function FileUploader() {
         </CardHeader>
         <CardContent className="pt-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid grid-cols-2 mb-6 bg-indigo-50">
+            <TabsList className="grid grid-cols-4 mb-6 bg-indigo-50">
               <TabsTrigger
                 value="upload"
                 disabled={processing}
@@ -540,6 +579,20 @@ export function FileUploader() {
                 <CheckCircleIcon className="h-4 w-4 mr-2" />
                 Résultats
               </TabsTrigger>
+              <TabsTrigger
+                value="database"
+                className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white"
+              >
+                <DatabaseIcon className="h-4 w-4 mr-2" />
+                Base de données
+              </TabsTrigger>
+              <a
+                href="/analyse"
+                className="flex items-center justify-center px-3 py-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 rounded-md transition-colors"
+              >
+                <BarChartIcon className="h-4 w-4 mr-2" />
+                Analyse
+              </a>
             </TabsList>
 
             <TabsContent value="upload" className="space-y-6">
@@ -697,6 +750,15 @@ export function FileUploader() {
                         <DownloadIcon className="h-3.5 w-3.5 mr-1" />
                         Tout télécharger
                       </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={saveAllToDatabase}
+                        className="h-8 bg-indigo-50 text-indigo-600 border-indigo-200 hover:bg-indigo-100 hover:text-indigo-700"
+                      >
+                        <SaveIcon className="h-3.5 w-3.5 mr-1" />
+                        Tout enregistrer en BDD
+                      </Button>
                     </div>
                   </div>
 
@@ -704,6 +766,8 @@ export function FileUploader() {
                     {processedFiles.map((fileData, index) => {
                       const fileType = getFileTypeInfo(fileData.fileName)
                       const FileTypeIcon = fileType.icon
+                      const isSaved = isFileSaved(fileData.fileName)
+                      const isSaving = savingToDb[fileData.fileName]
 
                       return (
                         <Card key={index} className="overflow-hidden border-indigo-100 shadow-sm">
@@ -717,27 +781,60 @@ export function FileUploader() {
                                 <Badge className="bg-green-100 text-green-700 border-none">
                                   {fileData.data.length} lignes
                                 </Badge>
+                                {isSaved && (
+                                  <Badge className="bg-indigo-100 text-indigo-700 border-none">
+                                    <DatabaseIcon className="h-3 w-3 mr-1" />
+                                    Enregistré en BDD
+                                  </Badge>
+                                )}
                               </div>
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => downloadCSV(fileData)}
-                                      className="h-8 w-8 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100"
-                                    >
-                                      <DownloadIcon className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>
-                                      Télécharger {fileData.fileName.substring(0, fileData.fileName.lastIndexOf("."))}
-                                      _mapped.csv
-                                    </p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
+                              <div className="flex gap-2">
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => downloadCSV(fileData)}
+                                        className="h-8 w-8 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100"
+                                      >
+                                        <DownloadIcon className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>
+                                        Télécharger {fileData.fileName.substring(0, fileData.fileName.lastIndexOf("."))}
+                                        _mapped.csv
+                                      </p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+
+                                {!isSaved && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => saveToDatabase(fileData)}
+                                          disabled={isSaving}
+                                          className="h-8 w-8 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100"
+                                        >
+                                          {isSaving ? (
+                                            <RefreshCwIcon className="h-4 w-4 animate-spin" />
+                                          ) : (
+                                            <SaveIcon className="h-4 w-4" />
+                                          )}
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Enregistrer en base de données</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
                             </div>
                           </CardHeader>
                           <CardContent className="p-0">
@@ -792,6 +889,10 @@ export function FileUploader() {
                   </div>
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent value="database" className="space-y-6">
+              <DatabaseView />
             </TabsContent>
           </Tabs>
         </CardContent>

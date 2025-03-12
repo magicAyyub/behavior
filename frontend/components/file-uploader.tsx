@@ -14,6 +14,7 @@ import {
   InfoIcon,
   FileSpreadsheetIcon,
   ArrowRightIcon,
+  RefreshCwIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -173,23 +174,26 @@ const getCellValue = (cell: ExcelJS.Cell): any => {
   return cell.value?.toString() || ""
 }
 
-// Fonction pour déterminer le type de fichier et son icône
+// Fonction pour déterminer le type de fichier et sa couleur
 const getFileTypeInfo = (fileName: string) => {
   const extension = fileName.split(".").pop()?.toLowerCase()
 
   if (extension === "csv") {
     return {
       icon: FileTextIcon,
+      color: "bg-amber-100 text-amber-600",
       label: "CSV",
     }
   } else if (["xlsx", "xls"].includes(extension || "")) {
     return {
       icon: FileSpreadsheetIcon,
+      color: "bg-emerald-100 text-emerald-600",
       label: "Excel",
     }
   } else {
     return {
       icon: FileIcon,
+      color: "bg-blue-100 text-blue-600",
       label: "Fichier",
     }
   }
@@ -507,24 +511,32 @@ export function FileUploader() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      <Card className="border-t-2 border-t-slate-300 shadow-sm">
-        <CardHeader className="bg-slate-50">
-          <CardTitle className="flex items-center gap-2 text-slate-800">
-            <FileTextIcon className="h-5 w-5 text-slate-600" />
+      <Card className="border-t-4 border-t-indigo-500 shadow-md">
+        <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50">
+          <CardTitle className="flex items-center gap-2 text-indigo-700">
+            <FileTextIcon className="h-6 w-6 text-indigo-500" />
             Convertisseur de fichiers
           </CardTitle>
-          <CardDescription className="text-slate-500">
+          <CardDescription className="text-indigo-500">
             Importez vos fichiers Excel ou CSV pour les convertir au format standardisé
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid grid-cols-2 mb-6">
-              <TabsTrigger value="upload" disabled={processing}>
+            <TabsList className="grid grid-cols-2 mb-6 bg-indigo-50">
+              <TabsTrigger
+                value="upload"
+                disabled={processing}
+                className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white"
+              >
                 <UploadCloudIcon className="h-4 w-4 mr-2" />
                 Importation
               </TabsTrigger>
-              <TabsTrigger value="results" disabled={processedFiles.length === 0 && !processing}>
+              <TabsTrigger
+                value="results"
+                disabled={processedFiles.length === 0 && !processing}
+                className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white"
+              >
                 <CheckCircleIcon className="h-4 w-4 mr-2" />
                 Résultats
               </TabsTrigger>
@@ -535,19 +547,23 @@ export function FileUploader() {
                 {...getRootProps()}
                 className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
                   isDragActive
-                    ? "border-slate-400 bg-slate-50"
-                    : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
+                    ? "border-indigo-500 bg-indigo-50"
+                    : "border-gray-300 hover:border-indigo-300 hover:bg-indigo-50/50"
                 }`}
               >
                 <input {...getInputProps()} />
                 <UploadCloudIcon
-                  className={`mx-auto h-12 w-12 mb-4 ${isDragActive ? "text-slate-600" : "text-slate-400"}`}
+                  className={`mx-auto h-16 w-16 mb-4 ${isDragActive ? "text-indigo-500" : "text-indigo-300"}`}
                 />
-                <h3 className="text-lg font-medium mb-2 text-slate-700">
+                <h3 className="text-lg font-medium mb-2 text-indigo-700">
                   {isDragActive ? "Déposez les fichiers ici" : "Glissez-déposez vos fichiers Excel ou CSV"}
                 </h3>
-                <p className="text-sm text-slate-500 mb-4">ou cliquez pour sélectionner des fichiers</p>
-                <Button variant="outline" type="button" className="bg-white hover:bg-slate-50">
+                <p className="text-sm text-indigo-500 mb-4">ou cliquez pour sélectionner des fichiers</p>
+                <Button
+                  variant="outline"
+                  type="button"
+                  className="bg-white hover:bg-indigo-50 text-indigo-600 border-indigo-200 hover:border-indigo-300"
+                >
                   Sélectionner des fichiers
                 </Button>
               </div>
@@ -555,13 +571,13 @@ export function FileUploader() {
               {files.length > 0 && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium text-slate-700">Fichiers sélectionnés</h3>
-                    <Badge variant="outline" className="font-normal">
+                    <h3 className="text-lg font-medium text-indigo-700">Fichiers sélectionnés</h3>
+                    <Badge variant="outline" className="font-normal bg-indigo-100 text-indigo-700 border-indigo-200">
                       {files.length} {files.length > 1 ? "fichiers" : "fichier"}
                     </Badge>
                   </div>
 
-                  <ScrollArea className="h-[200px] rounded-md border">
+                  <ScrollArea className="h-[200px] rounded-md border border-indigo-100">
                     <div className="p-4 grid gap-2">
                       {files.map((file, index) => {
                         const fileType = getFileTypeInfo(file.file.name)
@@ -570,21 +586,19 @@ export function FileUploader() {
                         return (
                           <div
                             key={index}
-                            className="flex items-center justify-between p-3 bg-white rounded-md hover:bg-slate-50 transition-colors border border-slate-100"
+                            className="flex items-center justify-between p-3 bg-white rounded-md hover:bg-indigo-50/50 transition-colors border border-indigo-100/50"
                           >
                             <div className="flex items-center space-x-3">
-                              <div className="p-2 rounded-md bg-slate-100">
-                                <FileTypeIcon className="h-5 w-5 text-slate-600" />
+                              <div className={`p-2 rounded-md ${fileType.color}`}>
+                                <FileTypeIcon className="h-5 w-5" />
                               </div>
                               <div>
-                                <span className="text-sm font-medium truncate max-w-[300px] block text-slate-700">
+                                <span className="text-sm font-medium truncate max-w-[300px] block text-gray-800">
                                   {file.file.name}
                                 </span>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs text-slate-500">
-                                    {(file.file.size / 1024).toFixed(1)} KB
-                                  </span>
-                                  <Badge variant="secondary" className="text-xs py-0 h-5">
+                                  <span className="text-xs text-gray-500">{(file.file.size / 1024).toFixed(1)} KB</span>
+                                  <Badge variant="outline" className={`text-xs py-0 h-5 ${fileType.color}`}>
                                     {fileType.label}
                                   </Badge>
                                 </div>
@@ -597,7 +611,7 @@ export function FileUploader() {
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => removeFile(index)}
-                                    className="h-8 w-8 text-slate-500 hover:text-slate-700"
+                                    className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
                                   >
                                     <XIcon className="h-4 w-4" />
                                   </Button>
@@ -614,14 +628,23 @@ export function FileUploader() {
                   </ScrollArea>
 
                   <div className="flex justify-end gap-2">
-                    <Button variant="outline" onClick={clearAll} disabled={processing}>
+                    <Button
+                      variant="outline"
+                      onClick={clearAll}
+                      disabled={processing}
+                      className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                    >
                       <XIcon className="h-4 w-4 mr-2" />
                       Tout effacer
                     </Button>
-                    <Button onClick={processFiles} disabled={processing || files.length === 0}>
+                    <Button
+                      onClick={processFiles}
+                      disabled={processing || files.length === 0}
+                      className="bg-indigo-600 hover:bg-indigo-700"
+                    >
                       {processing ? (
                         <>
-                          <span className="h-4 w-4 mr-2 animate-spin inline-block rounded-full border-2 border-current border-t-transparent" />
+                          <RefreshCwIcon className="h-4 w-4 mr-2 animate-spin" />
                           Traitement en cours...
                         </>
                       ) : (
@@ -636,21 +659,21 @@ export function FileUploader() {
               )}
 
               {processing && (
-                <div className="space-y-2 mt-4 p-4 border rounded-md bg-slate-50">
+                <div className="space-y-2 mt-4 p-4 border rounded-md bg-indigo-50 border-indigo-100">
                   <div className="flex justify-between text-sm">
                     <span className="flex items-center">
-                      <InfoIcon className="h-4 w-4 mr-2 text-slate-500" />
-                      <span className="text-slate-700">{processingStatus}</span>
+                      <InfoIcon className="h-4 w-4 mr-2 text-indigo-500 animate-pulse" />
+                      <span className="text-indigo-700">{processingStatus}</span>
                     </span>
-                    <span className="font-medium text-slate-700">{Math.round(progress)}%</span>
+                    <span className="font-medium text-indigo-700">{Math.round(progress)}%</span>
                   </div>
-                  <Progress value={progress} className="h-2" />
+                  <Progress value={progress} className="h-2" indicatorclassname="bg-indigo-500" />
                 </div>
               )}
 
               {error && (
-                <Alert variant="destructive" className="mt-4">
-                  <AlertCircleIcon className="h-4 w-4 mr-2" />
+                <Alert variant="destructive" className="mt-4 bg-red-50 border-red-200 text-red-700">
+                  <AlertCircleIcon className="h-4 w-4 mr-2 text-red-500" />
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
@@ -660,12 +683,17 @@ export function FileUploader() {
               {processedFiles && processedFiles.length > 0 && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium text-slate-700">Fichiers traités</h3>
+                    <h3 className="text-lg font-medium text-indigo-700">Fichiers traités</h3>
                     <div className="flex gap-2">
-                      <Badge variant="outline" className="font-normal">
+                      <Badge variant="outline" className="font-normal bg-green-100 text-green-700 border-green-200">
                         {processedFiles.length} {processedFiles.length > 1 ? "fichiers" : "fichier"}
                       </Badge>
-                      <Button variant="outline" size="sm" onClick={downloadAllCSV} className="h-8">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={downloadAllCSV}
+                        className="h-8 bg-green-50 text-green-600 border-green-200 hover:bg-green-100 hover:text-green-700"
+                      >
                         <DownloadIcon className="h-3.5 w-3.5 mr-1" />
                         Tout télécharger
                       </Button>
@@ -678,15 +706,17 @@ export function FileUploader() {
                       const FileTypeIcon = fileType.icon
 
                       return (
-                        <Card key={index} className="overflow-hidden border-slate-200">
-                          <CardHeader className="bg-slate-50 py-3">
+                        <Card key={index} className="overflow-hidden border-indigo-100 shadow-sm">
+                          <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 py-3">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <div className="p-1.5 rounded-md bg-slate-200">
-                                  <FileTypeIcon className="h-4 w-4 text-slate-600" />
+                                <div className={`p-1.5 rounded-md ${fileType.color}`}>
+                                  <FileTypeIcon className="h-4 w-4" />
                                 </div>
-                                <h4 className="font-medium text-sm text-slate-700">{fileData.fileName}</h4>
-                                <Badge variant="secondary">{fileData.data.length} lignes</Badge>
+                                <h4 className="font-medium text-sm text-indigo-700">{fileData.fileName}</h4>
+                                <Badge className="bg-green-100 text-green-700 border-none">
+                                  {fileData.data.length} lignes
+                                </Badge>
                               </div>
                               <TooltipProvider>
                                 <Tooltip>
@@ -695,7 +725,7 @@ export function FileUploader() {
                                       variant="ghost"
                                       size="icon"
                                       onClick={() => downloadCSV(fileData)}
-                                      className="h-8 w-8 text-slate-600 hover:text-slate-800"
+                                      className="h-8 w-8 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100"
                                     >
                                       <DownloadIcon className="h-4 w-4" />
                                     </Button>
@@ -713,7 +743,7 @@ export function FileUploader() {
                           <CardContent className="p-0">
                             <div className="p-4">
                               <DataPreview data={fileData.data.slice(0, 5)} />
-                              <p className="text-xs text-slate-500 mt-2 flex items-center">
+                              <p className="text-xs text-indigo-500 mt-2 flex items-center">
                                 <InfoIcon className="h-3 w-3 mr-1" />
                                 Aperçu des 5 premières lignes sur {fileData.data.length} au total.
                               </p>
@@ -724,8 +754,13 @@ export function FileUploader() {
                     })}
                   </div>
 
-                  <CardFooter className="flex justify-end gap-2 mt-4 pt-4 border-t border-slate-200">
-                    <Button variant="outline" onClick={clearAll}>
+                  <CardFooter className="flex justify-end gap-2 mt-4 pt-4 border-t border-indigo-100">
+                    <Button
+                      variant="outline"
+                      onClick={clearAll}
+                      className="bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                    >
+                      <RefreshCwIcon className="h-4 w-4 mr-2" />
                       Nouvelle importation
                     </Button>
                   </CardFooter>
@@ -734,8 +769,8 @@ export function FileUploader() {
 
               {validationErrors.length > 0 && (
                 <div className="mt-4">
-                  <Alert variant="destructive">
-                    <AlertCircleIcon className="h-4 w-4 mr-2" />
+                  <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-700">
+                    <AlertCircleIcon className="h-4 w-4 mr-2 text-red-500" />
                     <AlertDescription>
                       Des erreurs ont été détectées dans certains fichiers. Veuillez vérifier le format et réessayer.
                     </AlertDescription>
@@ -743,11 +778,11 @@ export function FileUploader() {
 
                   <div className="mt-2 space-y-2">
                     {validationErrors.map((error, index) => (
-                      <div key={index} className="p-3 border border-destructive/30 rounded-md bg-destructive/5">
-                        <p className="font-medium text-sm">{error.fileName}</p>
+                      <div key={index} className="p-3 border border-red-200 rounded-md bg-red-50">
+                        <p className="font-medium text-sm text-red-700">{error.fileName}</p>
                         <ul className="mt-1 text-xs space-y-1">
                           {error.errors.map((err, i) => (
-                            <li key={i} className="text-destructive">
+                            <li key={i} className="text-red-600">
                               • {err.message}
                             </li>
                           ))}

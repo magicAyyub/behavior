@@ -15,13 +15,13 @@ export function DataPreview({ data }: DataPreviewProps) {
   const columns = Object.keys(data[0])
 
   return (
-    <div className="border rounded-md">
+    <div className="border rounded-md border-indigo-100">
       <ScrollArea className="w-full whitespace-nowrap">
         <Table>
           <TableHeader>
-            <TableRow className="bg-slate-50">
+            <TableRow className="bg-indigo-50">
               {columns.map((column) => (
-                <TableHead key={column} className="px-2 py-2 text-xs font-medium text-slate-700">
+                <TableHead key={column} className="px-2 py-2 text-xs font-medium text-indigo-700">
                   {column}
                 </TableHead>
               ))}
@@ -29,7 +29,7 @@ export function DataPreview({ data }: DataPreviewProps) {
           </TableHeader>
           <TableBody>
             {data.map((row, rowIndex) => (
-              <TableRow key={rowIndex} className={rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50/30"}>
+              <TableRow key={rowIndex} className={rowIndex % 2 === 0 ? "bg-white" : "bg-indigo-50/30"}>
                 {columns.map((column) => (
                   <TableCell key={`${rowIndex}-${column}`} className="px-2 py-2 text-xs truncate max-w-[200px]">
                     {row[column] || "-"}

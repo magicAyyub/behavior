@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BarChartIcon, PieChartIcon, TableIcon, CalendarIcon, ArrowLeftIcon, RefreshCwIcon } from "lucide-react"
 import { AnalyseFilters } from "./analyse-filters"
 import { DataTable } from "./data-table"
-// import { TimeSeriesChart } from "./time-series-chart"
+import { TimeSeriesChart } from "./time-series-chart"
 import { DistributionChart } from "./distribution-chart"
 import { StatCards } from "./stat-cards"
 import { Button } from "@/components/ui/button"
@@ -94,9 +94,29 @@ export function AnalyseDashboard() {
       // Charger les statistiques
       const stats = await getStatsData(params)
       setStatsData(stats)
+
+      // Charger un aperçu des données filtrées
+      const result = await getFileDataFromAPI(
+        searchTerm,
+        selectedFile === "all" ? undefined : selectedFile,
+        1,
+        10,
+        dateRange.from?.toISOString(),
+        dateRange.to?.toISOString(),
+      )
+      setData(result.items)
     } catch (err) {
-      setError("Erreur lors du chargement des données d'analyse")
-      console.error(err)
+      console.error("Erreur lors du chargement des données d'analyse:", err)
+      // Réinitialiser les données en cas d'erreur
+      setAggregatedData([])
+      setDistributionData([])
+      setStatsData({
+        total_entries: 0,
+        unique_files: 0,
+        latest_entry: null,
+        unique_sources: 0,
+      })
+      setData([])
     } finally {
       setLoading(false)
     }
@@ -223,18 +243,18 @@ export function AnalyseDashboard() {
 
           {/* Onglets d'analyse */}
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid grid-cols-2 mb-6 bg-indigo-50">
+            <TabsList className="grid grid-cols-3 mb-6 bg-indigo-50">
               <TabsTrigger value="apercu" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
                 <TableIcon className="h-4 w-4 mr-2" />
                 Aperçu des données
               </TabsTrigger>
-              {/* <TabsTrigger
+              <TabsTrigger
                 value="evolution"
                 className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white"
               >
                 <CalendarIcon className="h-4 w-4 mr-2" />
                 Évolution temporelle
-              </TabsTrigger> */}
+              </TabsTrigger>
               <TabsTrigger
                 value="distribution"
                 className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white"
@@ -263,9 +283,9 @@ export function AnalyseDashboard() {
                   />
                 </TabsContent>
 
-                {/* <TabsContent value="evolution" className="space-y-4">
+                <TabsContent value="evolution" className="space-y-4">
                   <TimeSeriesChart data={aggregatedData} groupBy={groupBy} loading={loading} />
-                </TabsContent> */}
+                </TabsContent>
 
                 <TabsContent value="distribution" className="space-y-4">
                   <DistributionChart

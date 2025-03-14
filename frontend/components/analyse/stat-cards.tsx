@@ -1,8 +1,7 @@
-"use client"
-
 import { Card, CardContent } from "@/components/ui/card"
 import type { FileDataResponse } from "../api-service"
-import { FileIcon, ClockIcon, DatabaseIcon, UsersIcon } from "lucide-react"
+import { FileIcon, ClockIcon, DatabaseIcon, UsersIcon, RefreshCwIcon, InfoIcon } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface StatCardsProps {
   data: FileDataResponse[]
@@ -12,16 +11,29 @@ interface StatCardsProps {
 
 export function StatCards({ data, loading, statsData }: StatCardsProps) {
   // Utiliser les statistiques de l'API si disponibles, sinon calculer à partir des données locales
-  const totalEntries = statsData?.total_entries || data.length
-  const uniqueFiles = statsData?.unique_files || new Set(data.map((item) => item.file_name)).size
-  const latestEntry =
-    statsData?.latest_entry ||
-    (data.length > 0 && data[0].creation
-      ? new Date(
-          Math.max(...data.filter((item): item is typeof item & { creation: string } => Boolean(item.creation)).map((item) => new Date(item.creation).getTime())),
-        ).toLocaleDateString()
-      : "(vide)")
-  const uniqueSources = statsData?.unique_sources || new Set(data.map((item) => item.source).filter(Boolean)).size
+  const totalEntries = statsData?.total_entries ?? 0
+  const uniqueFiles = statsData?.unique_files ?? 0
+  const latestEntry = statsData?.latest_entry || "-"
+  const uniqueSources = statsData?.unique_sources ?? 0
+
+  // Fonction pour afficher le contenu des cartes en fonction de l'état de chargement
+  const renderCardContent = (value: any, loadingState: boolean) => {
+    if (loadingState) {
+      return (
+        <span className="inline-flex items-center">
+          <span className="animate-bounce mx-0.5">.</span>
+          <span className="animate-bounce mx-0.5 animation-delay-200">.</span>
+          <span className="animate-bounce mx-0.5 animation-delay-400">.</span>
+        </span>
+      )
+    }
+    
+    if (value === 0 || value === null || value === "-") {
+      return "(RAS)"
+    }
+    
+    return typeof value === "number" ? value.toLocaleString() : value
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -33,15 +45,7 @@ export function StatCards({ data, loading, statsData }: StatCardsProps) {
           <div>
             <p className="text-sm text-indigo-600 font-medium">Total des entrées</p>
             <h3 className="text-2xl font-bold text-indigo-700">
-              {loading ? (
-                <span className="inline-flex items-center">
-                  <span className="animate-bounce mx-0.5">.</span>
-                  <span className="animate-bounce mx-0.5 animation-delay-200">.</span>
-                  <span className="animate-bounce mx-0.5 animation-delay-400">.</span>
-                </span>
-              ) : (
-                totalEntries.toLocaleString()
-              )}
+              {renderCardContent(totalEntries, loading)}
             </h3>
           </div>
         </CardContent>
@@ -55,15 +59,7 @@ export function StatCards({ data, loading, statsData }: StatCardsProps) {
           <div>
             <p className="text-sm text-purple-600 font-medium">Fichiers uniques</p>
             <h3 className="text-2xl font-bold text-purple-700">
-              {loading ? (
-                <span className="inline-flex items-center">
-                  <span className="animate-bounce mx-0.5">.</span>
-                  <span className="animate-bounce mx-0.5 animation-delay-200">.</span>
-                  <span className="animate-bounce mx-0.5 animation-delay-400">.</span>
-                </span>
-              ) : (
-                uniqueFiles.toLocaleString()
-              )}
+              {renderCardContent(uniqueFiles, loading)}
             </h3>
           </div>
         </CardContent>
@@ -77,15 +73,7 @@ export function StatCards({ data, loading, statsData }: StatCardsProps) {
           <div>
             <p className="text-sm text-blue-600 font-medium">Dernière entrée</p>
             <h3 className="text-xl font-bold text-blue-700">
-              {loading ? (
-                <span className="inline-flex items-center">
-                  <span className="animate-bounce mx-0.5">.</span>
-                  <span className="animate-bounce mx-0.5 animation-delay-200">.</span>
-                  <span className="animate-bounce mx-0.5 animation-delay-400">.</span>
-                </span>
-              ) : (
-                latestEntry
-              )}
+              {renderCardContent(latestEntry, loading)}
             </h3>
           </div>
         </CardContent>
@@ -97,17 +85,21 @@ export function StatCards({ data, loading, statsData }: StatCardsProps) {
             <UsersIcon className="h-5 w-5 text-emerald-600" />
           </div>
           <div>
-            <p className="text-sm text-emerald-600 font-medium">Sources uniques</p>
+            <div className="flex items-center">
+              <span className="text-sm text-emerald-600 font-medium">Sources uniques</span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InfoIcon className="h-3.5 w-3.5 ml-1 text-emerald-500 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <span className="text-xs max-w-xs">La source indique l'origine des données (ex: système, département)</span>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <h3 className="text-2xl font-bold text-emerald-700">
-              {loading ? (
-                <span className="inline-flex items-center">
-                  <span className="animate-bounce mx-0.5">.</span>
-                  <span className="animate-bounce mx-0.5 animation-delay-200">.</span>
-                  <span className="animate-bounce mx-0.5 animation-delay-400">.</span>
-                </span>
-              ) : (
-                uniqueSources.toLocaleString()
-              )}
+              {renderCardContent(uniqueSources, loading)}
             </h3>
           </div>
         </CardContent>

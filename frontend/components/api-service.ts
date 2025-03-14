@@ -204,7 +204,7 @@ export const getAggregatedData = async (params: FilterParams): Promise<Aggregate
     return await response.json()
   } catch (error) {
     console.error("Erreur lors de la récupération des données agrégées:", error)
-    throw error
+    return [] // Retourner un tableau vide en cas d'erreur
   }
 }
 

@@ -6,7 +6,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { getFileDataFromAPI, exportAllDataToCSV, type FileDataResponse, type FilterParams } from "../api-service"
-import { RefreshCwIcon, ChevronLeftIcon, ChevronRightIcon, DownloadIcon } from "lucide-react"
+import { RefreshCwIcon, ChevronLeftIcon, ChevronRightIcon, DownloadIcon, SearchX, FilterX } from "lucide-react"
 
 interface DataTableProps {
   data: FileDataResponse[]
@@ -64,10 +64,7 @@ export function DataTable({
       } catch (error) {
         console.error("Erreur lors du chargement des données:", error)
       } finally {
-      // simulate loading
-      setTimeout(() => {
         setPageLoading(false)
-        }, 500)
       }
     }
 
@@ -256,8 +253,27 @@ ${csvRows.join("\n")}`
                 </TableRow>
               ) : data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={columns.length} className="text-center py-8 text-gray-500">
-                    Aucune donnée trouvée pour les critères sélectionnés
+                  <TableCell colSpan={columns.length} className="py-16">
+                    <div className="flex flex-col items-center justify-center text-gray-400">
+                      <SearchX className="h-16 w-16 mb-4 text-gray-300" />
+                      <p className="text-lg font-medium">Aucune donnée trouvée</p>
+                      <div className="flex items-center mt-2 text-sm">
+                        <FilterX className="h-4 w-4 mr-1" />
+                        <span>Essayez d'élargir vos critères de recherche</span>
+                      </div>
+
+                      {(searchTerm || selectedFile !== "all" || dateRange?.from || dateRange?.to) && (
+                        <div className="mt-4 text-sm">
+                          <p>Filtres actifs :</p>
+                          <ul className="list-disc list-inside mt-1">
+                            {searchTerm && <li>Recherche : "{searchTerm}"</li>}
+                            {selectedFile !== "all" && <li>Fichier : {selectedFile}</li>}
+                            {dateRange?.from && <li>Date début : {dateRange.from.toLocaleDateString('fr-FR')}</li>}
+                            {dateRange?.to && <li>Date fin : {dateRange.to.toLocaleDateString('fr-FR')}</li>}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -330,4 +346,3 @@ ${csvRows.join("\n")}`
     </div>
   )
 }
-

@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { DistributionDataPoint } from "../api-service"
-import { RefreshCwIcon } from "lucide-react"
+import { RefreshCwIcon, PieChartIcon as PieChartOff, FilterX } from "lucide-react"
 
 interface DistributionChartProps {
   data: DistributionDataPoint[]
@@ -65,8 +65,31 @@ export function DistributionChart({ data, loading, distributionField, onFieldCha
             </p>
           </div>
         ) : data.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64">
-            <p className="text-gray-500">Aucune donnée disponible pour cette sélection</p>
+          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+            <PieChartOff className="h-16 w-16 mb-4 text-gray-300" />
+            <p className="text-lg font-medium">Aucune donnée à distribuer</p>
+            <div className="flex items-center mt-2 text-sm">
+              <FilterX className="h-4 w-4 mr-1" />
+              <span>Essayez de modifier vos critères de recherche</span>
+            </div>
+            <p className="text-sm mt-4">
+              Vous pouvez également essayer un autre champ de distribution :
+              {distributionField !== "etat" && (
+                <button onClick={() => onFieldChange("etat")} className="ml-1 text-indigo-500 hover:underline">
+                  État
+                </button>
+              )}
+              {distributionField !== "source" && (
+                <button onClick={() => onFieldChange("source")} className="ml-1 text-indigo-500 hover:underline">
+                  Source
+                </button>
+              )}
+              {distributionField !== "file_name" && (
+                <button onClick={() => onFieldChange("file_name")} className="ml-1 text-indigo-500 hover:underline">
+                  Fichier
+                </button>
+              )}
+            </p>
           </div>
         ) : (
           <div className="space-y-4 mt-4">

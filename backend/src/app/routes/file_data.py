@@ -5,9 +5,9 @@ from sqlalchemy import func, extract, cast, Date, text
 from datetime import datetime, timedelta
 import re
 
-from app.db.session import get_db
-from app.models.file_data import FileData
-from app.schemas.file_data import (
+from src.utils.database import get_db
+from src.utils.models import FileData
+from src.utils.schema import (
     FileDataCreate, 
     FileDataResponse, 
     FileDataBulkCreate,

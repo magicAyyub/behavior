@@ -1,7 +1,6 @@
-import type React from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import type { FileDataResponse } from "../api-service"
-import { FileIcon, ClockIcon, DatabaseIcon, UsersIcon, InfoIcon, SearchIcon } from "lucide-react"
+import { FileIcon, ClockIcon, DatabaseIcon, UsersIcon, RefreshCwIcon, InfoIcon } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface StatCardsProps {
@@ -18,7 +17,7 @@ export function StatCards({ data, loading, statsData }: StatCardsProps) {
   const uniqueSources = statsData?.unique_sources ?? 0
 
   // Fonction pour afficher le contenu des cartes en fonction de l'état de chargement
-  const renderCardContent = (value: any, loadingState: boolean, icon?: React.ReactNode) => {
+  const renderCardContent = (value: any, loadingState: boolean) => {
     if (loadingState) {
       return (
         <span className="inline-flex items-center">
@@ -28,113 +27,78 @@ export function StatCards({ data, loading, statsData }: StatCardsProps) {
         </span>
       )
     }
-
+    
     if (value === 0 || value === null || value === "-") {
-      return (
-        <div className="flex items-center text-gray-400 text-lg">
-          {icon || <SearchIcon className="h-4 w-4 mr-2 opacity-70" />}
-          <span className="italic">Aucun résultat</span>
-        </div>
-      )
+      return "(RAS)"
     }
-
+    
     return typeof value === "number" ? value.toLocaleString() : value
   }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <Card
-        className={`border-indigo-100 transition-all duration-300 ${totalEntries === 0 ? "bg-gray-50" : "bg-white"}`}
-      >
+      <Card className="border-indigo-100">
         <CardContent className="p-4 flex items-center space-x-4">
-          <div className={`p-2 rounded-full transition-colors ${totalEntries === 0 ? "bg-gray-200" : "bg-indigo-100"}`}>
-            <DatabaseIcon className={`h-5 w-5 ${totalEntries === 0 ? "text-gray-400" : "text-indigo-600"}`} />
+          <div className="p-2 bg-indigo-100 rounded-full">
+            <DatabaseIcon className="h-5 w-5 text-indigo-600" />
           </div>
           <div>
-            <p className={`text-sm font-medium ${totalEntries === 0 ? "text-gray-500" : "text-indigo-600"}`}>
-              Total des entrées
-            </p>
-            <h3 className={`text-2xl font-bold ${totalEntries === 0 ? "text-gray-400" : "text-indigo-700"}`}>
+            <p className="text-sm text-indigo-600 font-medium">Total des entrées</p>
+            <h3 className="text-2xl font-bold text-indigo-700">
               {renderCardContent(totalEntries, loading)}
             </h3>
           </div>
         </CardContent>
       </Card>
 
-      <Card
-        className={`border-indigo-100 transition-all duration-300 ${uniqueFiles === 0 ? "bg-gray-50" : "bg-white"}`}
-      >
+      <Card className="border-indigo-100">
         <CardContent className="p-4 flex items-center space-x-4">
-          <div className={`p-2 rounded-full transition-colors ${uniqueFiles === 0 ? "bg-gray-200" : "bg-purple-100"}`}>
-            <FileIcon className={`h-5 w-5 ${uniqueFiles === 0 ? "text-gray-400" : "text-purple-600"}`} />
+          <div className="p-2 bg-purple-100 rounded-full">
+            <FileIcon className="h-5 w-5 text-purple-600" />
           </div>
           <div>
-            <p className={`text-sm font-medium ${uniqueFiles === 0 ? "text-gray-500" : "text-purple-600"}`}>
-              Fichiers uniques
-            </p>
-            <h3 className={`text-2xl font-bold ${uniqueFiles === 0 ? "text-gray-400" : "text-purple-700"}`}>
+            <p className="text-sm text-purple-600 font-medium">Fichiers uniques</p>
+            <h3 className="text-2xl font-bold text-purple-700">
               {renderCardContent(uniqueFiles, loading)}
             </h3>
           </div>
         </CardContent>
       </Card>
 
-      <Card
-        className={`border-indigo-100 transition-all duration-300 ${latestEntry === "-" || latestEntry === null ? "bg-gray-50" : "bg-white"}`}
-      >
+      <Card className="border-indigo-100">
         <CardContent className="p-4 flex items-center space-x-4">
-          <div
-            className={`p-2 rounded-full transition-colors ${latestEntry === "-" || latestEntry === null ? "bg-gray-200" : "bg-blue-100"}`}
-          >
-            <ClockIcon
-              className={`h-5 w-5 ${latestEntry === "-" || latestEntry === null ? "text-gray-400" : "text-blue-600"}`}
-            />
+          <div className="p-2 bg-blue-100 rounded-full">
+            <ClockIcon className="h-5 w-5 text-blue-600" />
           </div>
           <div>
-            <p
-              className={`text-sm font-medium ${latestEntry === "-" || latestEntry === null ? "text-gray-500" : "text-blue-600"}`}
-            >
-              Dernière entrée
-            </p>
-            <h3
-              className={`text-xl font-bold ${latestEntry === "-" || latestEntry === null ? "text-gray-400" : "text-blue-700"}`}
-            >
+            <p className="text-sm text-blue-600 font-medium">Dernière entrée</p>
+            <h3 className="text-xl font-bold text-blue-700">
               {renderCardContent(latestEntry, loading)}
             </h3>
           </div>
         </CardContent>
       </Card>
 
-      <Card
-        className={`border-indigo-100 transition-all duration-300 ${uniqueSources === 0 ? "bg-gray-50" : "bg-white"}`}
-      >
+      <Card className="border-indigo-100">
         <CardContent className="p-4 flex items-center space-x-4">
-          <div
-            className={`p-2 rounded-full transition-colors ${uniqueSources === 0 ? "bg-gray-200" : "bg-emerald-100"}`}
-          >
-            <UsersIcon className={`h-5 w-5 ${uniqueSources === 0 ? "text-gray-400" : "text-emerald-600"}`} />
+          <div className="p-2 bg-emerald-100 rounded-full">
+            <UsersIcon className="h-5 w-5 text-emerald-600" />
           </div>
           <div>
             <div className="flex items-center">
-              <span className={`text-sm font-medium ${uniqueSources === 0 ? "text-gray-500" : "text-emerald-600"}`}>
-                Sources uniques
-              </span>
+              <span className="text-sm text-emerald-600 font-medium">Sources uniques</span>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <InfoIcon
-                      className={`h-3.5 w-3.5 ml-1 cursor-help ${uniqueSources === 0 ? "text-gray-400" : "text-emerald-500"}`}
-                    />
+                    <InfoIcon className="h-3.5 w-3.5 ml-1 text-emerald-500 cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent>
-                    <span className="text-xs max-w-xs">
-                      La source indique l'origine des données (ex: système, département)
-                    </span>
+                    <span className="text-xs max-w-xs">La source indique l'origine des données (ex: système, département)</span>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             </div>
-            <h3 className={`text-2xl font-bold ${uniqueSources === 0 ? "text-gray-400" : "text-emerald-700"}`}>
+            <h3 className="text-2xl font-bold text-emerald-700">
               {renderCardContent(uniqueSources, loading)}
             </h3>
           </div>

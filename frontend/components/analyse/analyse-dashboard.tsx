@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BarChartIcon, PieChartIcon, TableIcon, CalendarIcon, ArrowLeftIcon, RefreshCwIcon } from "lucide-react"
 import { AnalyseFilters } from "./analyse-filters"
 import { DataTable } from "./data-table"
-import { TimeSeriesChart } from "./time-series-chart"
+// import { TimeSeriesChart } from "./time-series-chart"
 import { DistributionChart } from "./distribution-chart"
 import { StatCards } from "./stat-cards"
 import { Button } from "@/components/ui/button"
@@ -243,18 +243,18 @@ export function AnalyseDashboard() {
 
           {/* Onglets d'analyse */}
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid grid-cols-3 mb-6 bg-indigo-50">
+            <TabsList className="grid grid-cols-2 mb-6 bg-indigo-50">
               <TabsTrigger value="apercu" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
                 <TableIcon className="h-4 w-4 mr-2" />
                 Aperçu des données
               </TabsTrigger>
-              <TabsTrigger
+              {/* <TabsTrigger
                 value="evolution"
                 className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white"
               >
                 <CalendarIcon className="h-4 w-4 mr-2" />
                 Évolution temporelle
-              </TabsTrigger>
+              </TabsTrigger> */}
               <TabsTrigger
                 value="distribution"
                 className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white"
@@ -283,9 +283,9 @@ export function AnalyseDashboard() {
                   />
                 </TabsContent>
 
-                <TabsContent value="evolution" className="space-y-4">
+                {/* <TabsContent value="evolution" className="space-y-4">
                   <TimeSeriesChart data={aggregatedData} groupBy={groupBy} loading={loading} />
-                </TabsContent>
+                </TabsContent> */}
 
                 <TabsContent value="distribution" className="space-y-4">
                   <DistributionChart

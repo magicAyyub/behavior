@@ -1,12 +1,6 @@
 // Service pour interagir avec l'API backend
-/*
-Pour l'instant ce qu'on fait c'est de la réecriture d'url. C'est à dire que toute url qui commence par /api/ sera redirigée vers le backend.
-Ce qui fait que j'ai ${API_BASE_URL}file-data/ au lieu de ${API_BASE_URL}/file-data/ et ça va rediriger vers http://localhost:8000/api/file-data/
-Pour un déploiement en production, il faudra changer la valeur de API_BASE_URL pour pointer vers l'URL du backend et mettre un / à la fin de l'url
-ou alors ajouter un / après ${API_BASE_URL} dans les appels à fetch.
-*/
 
-const API_BASE_URL = "http://localhost:8000/api/"
+const API_BASE_URL = "http://localhost:8000/api"
 
 export interface FileDataItem {
   reference?: string
@@ -94,6 +88,8 @@ export const getFileDataFromAPI = async (
   fileName?: string,
   page = 1,
   pageSize = 100,
+  dateFrom?: string,
+  dateTo?: string,
 ): Promise<PaginatedResponse> => {
   try {
     const skip = (page - 1) * pageSize
@@ -105,6 +101,14 @@ export const getFileDataFromAPI = async (
 
     if (fileName && fileName !== "all") {
       url += `&file_name=${encodeURIComponent(fileName)}`
+    }
+
+    if (dateFrom) {
+      url += `&date_from=${encodeURIComponent(dateFrom)}`
+    }
+
+    if (dateTo) {
+      url += `&date_to=${encodeURIComponent(dateTo)}`
     }
 
     const response = await fetch(url)
@@ -214,7 +218,9 @@ export const getDistributionData = async (field: string, params: FilterParams): 
     if (params.dateFrom) queryParams.append("date_from", params.dateFrom)
     if (params.dateTo) queryParams.append("date_to", params.dateTo)
 
-    const response = await fetch(`${API_BASE_URL}file-data/distribution?${queryParams}`)
+    const response = await fetch(`${API_BASE_URL}file-data/distribution  params.dateTo)
+
+    const response = await fetch(\`${API_BASE_URL}file-data/distribution?${queryParams}`)
 
     if (!response.ok) {
       const errorData = await response.json()
@@ -250,4 +256,3 @@ export const getStatsData = async (params: FilterParams): Promise<any> => {
     throw error
   }
 }
-

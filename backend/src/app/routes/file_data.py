@@ -1,23 +1,23 @@
-from datetime import datetime,timedelta
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, text
+from sqlalchemy import func, extract, cast, Date, text
+from datetime import datetime, timedelta
+import re
 
-from src.utils.database import get_db
-from src.utils.models import FileData
-from src.utils.schema import (
-    FileDataBulkCreate, 
-    FileDataResponse,
+from app.db.session import get_db
+from app.models.file_data import FileData
+from app.schemas.file_data import (
+    FileDataCreate, 
+    FileDataResponse, 
+    FileDataBulkCreate,
     AggregatedDataPoint,
     DistributionDataPoint,
     PaginatedResponse
 )
 
-router = APIRouter(
-    prefix="/api/file-data",
-    tags=["Données de fichier"]
-)
+router = APIRouter()
+
 
 @router.post("/", response_model=List[FileDataResponse])
 def create_file_data(
@@ -44,6 +44,8 @@ def read_file_data(
     limit: int = 100,
     search: Optional[str] = None,
     file_name: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     """Récupérer les données de fichier avec filtrage optionnel et pagination"""
@@ -63,6 +65,13 @@ def read_file_data(
     
     if file_name and file_name != "all":
         query = query.filter(FileData.file_name == file_name)
+    
+    # Appliquer les filtres de date
+    if date_from:
+        query = query.filter(apply_date_filter(FileData.creation, ">=", date_from))
+    
+    if date_to:
+        query = query.filter(apply_date_filter(FileData.creation, "<=", date_to))
     
     # Compter le nombre total d'enregistrements (pour la pagination)
     total = query.count()
@@ -99,6 +108,31 @@ def delete_file_data(
         raise HTTPException(status_code=404, detail=f"Aucune donnée trouvée pour le fichier {file_name}")
     
     return {"message": f"Données du fichier {file_name} supprimées avec succès"}
+
+
+# Fonction utilitaire pour appliquer les filtres de date
+def apply_date_filter(column, operator, date_value):
+    """
+    Applique un filtre de date sur une colonne en tenant compte des différents formats de date
+    """
+    if not date_value:
+        return True  # Ne pas filtrer si aucune date n'est fournie
+    
+    # Vérifier si la date est au format ISO (YYYY-MM-DD...)
+    iso_pattern = re.compile(r'^\d{4}-\d{2}-\d{2}')
+    if iso_pattern.match(date_value):
+        # Pour les dates ISO, on peut les comparer directement
+        if operator == ">=":
+            return text(f"CASE WHEN creation LIKE '%/%/%' THEN "
+                       f"to_date(substring(creation, 7, 4) || '-' || substring(creation, 4, 2) || '-' || substring(creation, 1, 2), 'YYYY-MM-DD') >= to_date('{date_value}', 'YYYY-MM-DD') "
+                       f"ELSE to_date(substring(creation, 1, 10), 'YYYY-MM-DD') >= to_date('{date_value}', 'YYYY-MM-DD') END")
+        else:  # operator == "<="
+            return text(f"CASE WHEN creation LIKE '%/%/%' THEN "
+                       f"to_date(substring(creation, 7, 4) || '-' || substring(creation, 4, 2) || '-' || substring(creation, 1, 2), 'YYYY-MM-DD') <= to_date('{date_value}', 'YYYY-MM-DD') "
+                       f"ELSE to_date(substring(creation, 1, 10), 'YYYY-MM-DD') <= to_date('{date_value}', 'YYYY-MM-DD') END")
+    
+    # Si ce n'est pas une date ISO, on suppose que c'est déjà au format DD/MM/YYYY
+    return column.op(operator)(date_value)
 
 
 # Endpoints optimisés pour l'analyse
@@ -162,13 +196,30 @@ def get_aggregated_data(
         sql_query += " AND file_name = :file_name"
         params["file_name"] = file_name
     
+    # Ajouter les filtres de date
     if date_from:
-        sql_query += " AND creation >= :date_from"
-        params["date_from"] = date_from
+        sql_query += """
+            AND (
+                CASE WHEN creation LIKE '%/%/%' THEN 
+                    to_date(substring(creation, 7, 4) || '-' || substring(creation, 4, 2) || '-' || substring(creation, 1, 2), 'YYYY-MM-DD')
+                ELSE 
+                    to_date(substring(creation, 1, 10), 'YYYY-MM-DD')
+                END
+            ) >= to_date(:date_from, 'YYYY-MM-DD')
+        """
+        params["date_from"] = date_from[:10]  # Prendre seulement la partie date (YYYY-MM-DD)
     
     if date_to:
-        sql_query += " AND creation <= :date_to"
-        params["date_to"] = date_to
+        sql_query += """
+            AND (
+                CASE WHEN creation LIKE '%/%/%' THEN 
+                    to_date(substring(creation, 7, 4) || '-' || substring(creation, 4, 2) || '-' || substring(creation, 1, 2), 'YYYY-MM-DD')
+                ELSE 
+                    to_date(substring(creation, 1, 10), 'YYYY-MM-DD')
+                END
+            ) <= to_date(:date_to, 'YYYY-MM-DD')
+        """
+        params["date_to"] = date_to[:10]  # Prendre seulement la partie date (YYYY-MM-DD)
     
     sql_query += """
     ),
@@ -318,7 +369,7 @@ def get_distribution_data(
     sql_query = f"""
     WITH filtered_data AS (
         SELECT 
-            "{field}"
+            {field}
         FROM 
             file_data
         WHERE 
@@ -345,23 +396,40 @@ def get_distribution_data(
         sql_query += " AND file_name = :file_name"
         params["file_name"] = file_name
     
+    # Ajouter les filtres de date
     if date_from:
-        sql_query += " AND creation >= :date_from"
-        params["date_from"] = date_from
+        sql_query += """
+            AND (
+                CASE WHEN creation LIKE '%/%/%' THEN 
+                    to_date(substring(creation, 7, 4) || '-' || substring(creation, 4, 2) || '-' || substring(creation, 1, 2), 'YYYY-MM-DD')
+                ELSE 
+                    to_date(substring(creation, 1, 10), 'YYYY-MM-DD')
+                END
+            ) >= to_date(:date_from, 'YYYY-MM-DD')
+        """
+        params["date_from"] = date_from[:10]  # Prendre seulement la partie date (YYYY-MM-DD)
     
     if date_to:
-        sql_query += " AND creation <= :date_to"
-        params["date_to"] = date_to
+        sql_query += """
+            AND (
+                CASE WHEN creation LIKE '%/%/%' THEN 
+                    to_date(substring(creation, 7, 4) || '-' || substring(creation, 4, 2) || '-' || substring(creation, 1, 2), 'YYYY-MM-DD')
+                ELSE 
+                    to_date(substring(creation, 1, 10), 'YYYY-MM-DD')
+                END
+            ) <= to_date(:date_to, 'YYYY-MM-DD')
+        """
+        params["date_to"] = date_to[:10]  # Prendre seulement la partie date (YYYY-MM-DD)
     
-    sql_query += f"""
+    sql_query += """
     ),
     total AS (
         SELECT COUNT(*) AS total_count FROM filtered_data
     )
     SELECT 
-        COALESCE("{field}", 'Non défini') AS label,
+        COALESCE({field}, 'Non défini') AS label,
         COUNT(*) AS count,
-        (COUNT(*) * 100.0 / (SELECT total_count FROM total)) AS percentage
+        (COUNT(*) * 100.0 / NULLIF((SELECT total_count FROM total), 0)) AS percentage
     FROM 
         filtered_data
     GROUP BY 
@@ -378,7 +446,7 @@ def get_distribution_data(
     for row in result:
         label = row[0]
         count = row[1]
-        percentage = row[2]
+        percentage = row[2] if row[2] is not None else 0.0
         
         distribution_data.append(DistributionDataPoint(
             label=str(label),
@@ -432,13 +500,30 @@ def get_stats(
         sql_query += " AND file_name = :file_name"
         params["file_name"] = file_name
     
+    # Ajouter les filtres de date
     if date_from:
-        sql_query += " AND creation >= :date_from"
-        params["date_from"] = date_from
+        sql_query += """
+            AND (
+                CASE WHEN creation LIKE '%/%/%' THEN 
+                    to_date(substring(creation, 7, 4) || '-' || substring(creation, 4, 2) || '-' || substring(creation, 1, 2), 'YYYY-MM-DD')
+                ELSE 
+                    to_date(substring(creation, 1, 10), 'YYYY-MM-DD')
+                END
+            ) >= to_date(:date_from, 'YYYY-MM-DD')
+        """
+        params["date_from"] = date_from[:10]  # Prendre seulement la partie date (YYYY-MM-DD)
     
     if date_to:
-        sql_query += " AND creation <= :date_to"
-        params["date_to"] = date_to
+        sql_query += """
+            AND (
+                CASE WHEN creation LIKE '%/%/%' THEN 
+                    to_date(substring(creation, 7, 4) || '-' || substring(creation, 4, 2) || '-' || substring(creation, 1, 2), 'YYYY-MM-DD')
+                ELSE 
+                    to_date(substring(creation, 1, 10), 'YYYY-MM-DD')
+                END
+            ) <= to_date(:date_to, 'YYYY-MM-DD')
+        """
+        params["date_to"] = date_to[:10]  # Prendre seulement la partie date (YYYY-MM-DD)
     
     sql_query += """
     )

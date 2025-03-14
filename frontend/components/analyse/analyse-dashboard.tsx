@@ -19,6 +19,7 @@ import {
   getStatsData,
   type FileDataResponse,
   type FilterParams,
+  type DistributionDataPoint,
 } from "../api-service"
 
 export function AnalyseDashboard() {
@@ -37,7 +38,8 @@ export function AnalyseDashboard() {
 
   // Données d'analyse
   const [aggregatedData, setAggregatedData] = useState<any[]>([])
-  const [distributionData, setDistributionData] = useState<any[]>([])
+  const [distributionData, setDistributionData] = useState<DistributionDataPoint[]>([])
+  const [distributionField, setDistributionField] = useState<string>("etat")
   const [statsData, setStatsData] = useState<any>(null)
 
   // Ajouter un état de transition pour les changements d'onglets
@@ -86,7 +88,7 @@ export function AnalyseDashboard() {
       setAggregatedData(aggregated)
 
       // Charger les données de distribution
-      const distribution = await getDistributionData("etat", params)
+      const distribution = await getDistributionData(distributionField, params)
       setDistributionData(distribution)
 
       // Charger les statistiques
@@ -144,6 +146,33 @@ export function AnalyseDashboard() {
       setActiveTab(value)
       setTabTransition(false)
     }, 300)
+  }
+
+  // Gérer le changement de champ de distribution
+  const handleDistributionFieldChange = (field: string) => {
+    setDistributionField(field)
+
+    // Recharger les données de distribution avec le nouveau champ
+    const loadDistributionData = async () => {
+      setLoading(true)
+      try {
+        const params: FilterParams = {
+          search: searchTerm,
+          fileName: selectedFile === "all" ? undefined : selectedFile,
+          dateFrom: dateRange.from?.toISOString(),
+          dateTo: dateRange.to?.toISOString(),
+        }
+
+        const distribution = await getDistributionData(field, params)
+        setDistributionData(distribution)
+      } catch (err) {
+        console.error("Erreur lors du chargement de la distribution:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadDistributionData()
   }
 
   return (
@@ -233,13 +262,18 @@ export function AnalyseDashboard() {
                     dateRange={dateRange}
                   />
                 </TabsContent>
-{/* 
-                <TabsContent value="evolution" className="space-y-4">
+
+                {/* <TabsContent value="evolution" className="space-y-4">
                   <TimeSeriesChart data={aggregatedData} groupBy={groupBy} loading={loading} />
                 </TabsContent> */}
 
                 <TabsContent value="distribution" className="space-y-4">
-                  <DistributionChart data={distributionData} loading={loading} />
+                  <DistributionChart
+                    data={distributionData}
+                    loading={loading}
+                    distributionField={distributionField}
+                    onFieldChange={handleDistributionFieldChange}
+                  />
                 </TabsContent>
               </>
             )}

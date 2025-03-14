@@ -176,7 +176,7 @@ def get_aggregated_data(
         FROM 
             file_data
         WHERE 
-            creation IS NOT NULL
+            1=1
     """
     
     # Paramètres pour la requête
@@ -348,6 +348,7 @@ def get_aggregated_data(
             data=data_json
         ))
     
+    # Si aucun résultat, retourner un tableau vide
     return aggregated_data
 
 
@@ -362,102 +363,65 @@ def get_distribution_data(
 ):
     """
     Récupérer la distribution des données par champ spécifié
-    Utilise des requêtes SQL optimisées pour éviter de charger toutes les données
+    Version simplifiée pour déboguer l'erreur 500
     """
     # Vérifier que le champ existe dans le modèle
     if not hasattr(FileData, field):
         raise HTTPException(status_code=400, detail=f"Le champ {field} n'existe pas dans le modèle")
     
-    # Construire la requête SQL directe pour la distribution
-    sql_query = f"""
-    WITH filtered_data AS (
-        SELECT 
-            {field}
-        FROM 
-            file_data
-        WHERE 
-            1=1
-    """
-    
-    # Paramètres pour la requête
-    params = {}
-    
-    # Ajouter les conditions de filtrage
-    if search:
-        sql_query += """
-            AND (
-                reference ILIKE :search OR
-                id_lin ILIKE :search OR
-                id_ccu ILIKE :search OR
-                etat ILIKE :search OR
-                source ILIKE :search
-            )
-        """
-        params["search"] = f"%{search}%"
-    
-    if file_name and file_name != "all":
-        sql_query += " AND file_name = :file_name"
-        params["file_name"] = file_name
-    
-    # Ajouter les filtres de date
-    if date_from:
-        sql_query += """
-            AND (
-                CASE WHEN creation LIKE '%/%/%' THEN 
-                    to_date(substring(creation, 7, 4) || '-' || substring(creation, 4, 2) || '-' || substring(creation, 1, 2), 'YYYY-MM-DD')
-                ELSE 
-                    to_date(substring(creation, 1, 10), 'YYYY-MM-DD')
-                END
-            ) >= to_date(:date_from, 'YYYY-MM-DD')
-        """
-        params["date_from"] = date_from[:10]  # Prendre seulement la partie date (YYYY-MM-DD)
-    
-    if date_to:
-        sql_query += """
-            AND (
-                CASE WHEN creation LIKE '%/%/%' THEN 
-                    to_date(substring(creation, 7, 4) || '-' || substring(creation, 4, 2) || '-' || substring(creation, 1, 2), 'YYYY-MM-DD')
-                ELSE 
-                    to_date(substring(creation, 1, 10), 'YYYY-MM-DD')
-                END
-            ) <= to_date(:date_to, 'YYYY-MM-DD')
-        """
-        params["date_to"] = date_to[:10]  # Prendre seulement la partie date (YYYY-MM-DD)
-    
-    sql_query += """
-    ),
-    total AS (
-        SELECT COUNT(*) AS total_count FROM filtered_data
-    )
-    SELECT 
-        COALESCE({field}, 'Non défini') AS label,
-        COUNT(*) AS count,
-        (COUNT(*) * 100.0 / NULLIF((SELECT total_count FROM total), 0)) AS percentage
-    FROM 
-        filtered_data
-    GROUP BY 
-        label
-    ORDER BY 
-        count DESC
-    """
-    
-    # Exécuter la requête SQL
-    result = db.execute(text(sql_query), params).fetchall()
-    
-    # Convertir les résultats en objets DistributionDataPoint
-    distribution_data = []
-    for row in result:
-        label = row[0]
-        count = row[1]
-        percentage = row[2] if row[2] is not None else 0.0
+    try:
+        # Construire la requête de base
+        query = db.query(
+            getattr(FileData, field).label("label"),
+            func.count().label("count")
+        )
         
-        distribution_data.append(DistributionDataPoint(
-            label=str(label),
-            count=count,
-            percentage=percentage
-        ))
+        # Appliquer les filtres
+        if search:
+            search_term = f"%{search}%"
+            query = query.filter(
+                (FileData.reference.ilike(search_term)) |
+                (FileData.id_lin.ilike(search_term)) |
+                (FileData.id_ccu.ilike(search_term)) |
+                (FileData.etat.ilike(search_term)) |
+                (FileData.source.ilike(search_term))
+            )
+        
+        if file_name and file_name != "all":
+            query = query.filter(FileData.file_name == file_name)
+        
+        # Appliquer les filtres de date
+        if date_from:
+            query = query.filter(apply_date_filter(FileData.creation, ">=", date_from))
+        
+        if date_to:
+            query = query.filter(apply_date_filter(FileData.creation, "<=", date_to))
+        
+        # Grouper et ordonner
+        query = query.group_by(getattr(FileData, field)).order_by(func.count().desc())
+        
+        # Exécuter la requête
+        result = query.all()
+        
+        # Calculer le total pour les pourcentages
+        total = sum(item[1] for item in result)
+        
+        # Convertir les résultats en objets DistributionDataPoint
+        distribution_data = []
+        for label, count in result:
+            percentage = (count / total * 100) if total > 0 else 0
+            distribution_data.append(DistributionDataPoint(
+                label=str(label) if label is not None else "Non défini",
+                count=count,
+                percentage=percentage
+            ))
+        
+        return distribution_data
     
-    return distribution_data
+    except Exception as e:
+        # Capturer et logger l'erreur pour le débogage
+        print(f"Erreur dans get_distribution_data: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la récupération des données de distribution: {str(e)}")
 
 
 @router.get("/stats", response_model=Dict[str, Any])
@@ -552,17 +516,84 @@ def get_stats(
     result = db.execute(text(sql_query), params).fetchone()
     
     # Convertir les résultats en dictionnaire
-    if result:
-        return {
-            "total_entries": result[0],
-            "unique_files": result[1],
-            "latest_entry": result[2],
-            "unique_sources": result[3]
-        }
-    else:
+    if result is None or result[0] == 0:
         return {
             "total_entries": 0,
             "unique_files": 0,
             "latest_entry": None,
             "unique_sources": 0
         }
+    else:
+        return {
+            "total_entries": result[0],
+            "unique_files": result[1],
+            "latest_entry": result[2],
+            "unique_sources": result[3]
+        }
+
+
+@router.get("/export", response_model=List[Dict[str, Any]])
+def export_data(
+    search: Optional[str] = None,
+    file_name: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Exporter toutes les données avec filtrage optionnel
+    Retourne toutes les colonnes et toutes les lignes pour l'export CSV
+    """
+    # Construire la requête de base
+    query = db.query(FileData)
+    
+    # Appliquer les filtres
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            (FileData.reference.ilike(search_term)) |
+            (FileData.id_lin.ilike(search_term)) |
+            (FileData.id_ccu.ilike(search_term)) |
+            (FileData.etat.ilike(search_term)) |
+            (FileData.source.ilike(search_term))
+        )
+    
+    if file_name and file_name != "all":
+        query = query.filter(FileData.file_name == file_name)
+    
+    # Appliquer les filtres de date
+    if date_from:
+        query = query.filter(apply_date_filter(FileData.creation, ">=", date_from))
+    
+    if date_to:
+        query = query.filter(apply_date_filter(FileData.creation, "<=", date_to))
+    
+    # Récupérer toutes les données (sans pagination)
+    items = query.all()
+    
+    # Convertir les objets ORM en dictionnaires
+    result = []
+    for item in items:
+        item_dict = {
+            "reference": item.reference,
+            "id_lin": item.id_lin,
+            "id_ccu": item.id_ccu,
+            "etat": item.etat,
+            "creation": item.creation,
+            "mise_a_jour": item.mise_a_jour,
+            "idrh": item.idrh,
+            "device_id": item.device_id,
+            "retour_metier": item.retour_metier,
+            "commentaires_cloture": item.commentaires_cloture,
+            "nom_bureau_poste": item.nom_bureau_poste,
+            "regate": item.regate,
+            "source": item.source,
+            "solution_scan": item.solution_scan,
+            "rg": item.rg,
+            "ruo": item.ruo,
+            "file_name": item.file_name,
+            "import_date": item.import_date.isoformat() if item.import_date else None
+        }
+        result.append(item_dict)
+    
+    return result

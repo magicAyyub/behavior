@@ -5,23 +5,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { getFileDataFromAPI, type FileDataResponse } from "../api-service"
+import { getFileDataFromAPI, exportAllDataToCSV, type FileDataResponse, type FilterParams } from "../api-service"
 import { RefreshCwIcon, ChevronLeftIcon, ChevronRightIcon, DownloadIcon } from "lucide-react"
 
 interface DataTableProps {
   data: FileDataResponse[]
-  initialLoading: boolean 
-  searchTerm?: string 
+  initialLoading: boolean
+  searchTerm?: string
   selectedFile?: string
   dateRange?: { from?: Date; to?: Date }
 }
 
 export function DataTable({
   data: initialData,
-//   initialLoading,
+  // initialLoading: initialLoading,
   searchTerm,
   selectedFile,
-//   dateRange,
+  dateRange,
 }: DataTableProps) {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -32,6 +32,7 @@ export function DataTable({
   const [totalItems, setTotalItems] = useState<number>(0)
   const [totalPages, setTotalPages] = useState<number>(1)
   const [pageLoading, setPageLoading] = useState<boolean>(false)
+  const [exportLoading, setExportLoading] = useState<boolean>(false)
 
   // Colonnes à afficher
   const columns = [
@@ -54,6 +55,8 @@ export function DataTable({
           selectedFile === "all" ? undefined : selectedFile,
           page,
           pageSize,
+          dateRange?.from?.toISOString(),
+          dateRange?.to?.toISOString(),
         )
         setData(response.items)
         setTotalItems(response.total)
@@ -61,15 +64,15 @@ export function DataTable({
       } catch (error) {
         console.error("Erreur lors du chargement des données:", error)
       } finally {
-        // simulate loading
-        setTimeout(() => {
-            setPageLoading(false)
-            }, 500)
+      // simulate loading
+      setTimeout(() => {
+        setPageLoading(false)
+        }, 500)
       }
     }
 
     fetchData()
-  }, [page, pageSize, searchTerm, selectedFile])
+  }, [page, pageSize, searchTerm, selectedFile, dateRange])
 
   // Fonction pour changer le tri
   const handleSort = (field: string) => {
@@ -84,25 +87,75 @@ export function DataTable({
   // Fonction pour exporter les données
   const exportToCSV = async () => {
     try {
-      setLoading(true)
-      // Récupérer toutes les données pour l'export (limité à 10000 pour éviter les problèmes de mémoire)
-      const allData = await getFileDataFromAPI(searchTerm, selectedFile === "all" ? undefined : selectedFile, 1, 10000)
+      setExportLoading(true)
 
-      if (allData.items.length === 0) return
+      // Préparer les paramètres de filtrage
+      const params: FilterParams = {
+        search: searchTerm,
+        fileName: selectedFile === "all" ? undefined : selectedFile,
+        dateFrom: dateRange?.from?.toISOString(),
+        dateTo: dateRange?.to?.toISOString(),
+      }
 
-      const headers = columns.map((col) => col.label).join(";")
-      const rows = allData.items
-        .map((row) =>
-          columns
-            .map((col) => {
-              const value = row[col.id as keyof FileDataResponse]
-              return value ? `"${value}"` : '""'
-            })
-            .join(";"),
-        )
-        .join("\n")
+      // Récupérer toutes les données pour l'export
+      const allData = await exportAllDataToCSV(params)
 
-      const csvContent = `${headers}\n${rows}`
+      if (allData.length === 0) {
+        alert("Aucune donnée à exporter")
+        return
+      }
+
+      // Définir les en-têtes pour le CSV (toutes les colonnes)
+      const headers = [
+        "Référence",
+        "ID LIN",
+        "ID CCU",
+        "Etat",
+        "Création",
+        "Mise à jour",
+        "IDRH",
+        "Device Id",
+        "Retour métier",
+        "Commentaires cloture",
+        "Nom bureau de poste",
+        "Regate",
+        "Source",
+        "Solution scan",
+        "RG",
+        "RUO",
+        "Fichier",
+      ]
+
+      // Mapper les données pour le CSV
+      const csvRows = allData.map((row) => {
+        return [
+          row.reference || "",
+          row.id_lin || "",
+          row.id_ccu || "",
+          row.etat || "",
+          row.creation || "",
+          row.mise_a_jour || "",
+          row.idrh || "",
+          row.device_id || "",
+          row.retour_metier || "",
+          row.commentaires_cloture || "",
+          row.nom_bureau_poste || "",
+          row.regate || "",
+          row.source || "",
+          row.solution_scan || "",
+          row.rg || "",
+          row.ruo || "",
+          row.file_name || "",
+        ]
+          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+          .join(";")
+      })
+
+      // Créer le contenu CSV
+      const csvContent = `${headers.map((h) => `"${h}"`).join(";")}
+${csvRows.join("\n")}`
+
+      // Créer et télécharger le fichier
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
       const url = URL.createObjectURL(blob)
       const link = document.createElement("a")
@@ -113,8 +166,9 @@ export function DataTable({
       document.body.removeChild(link)
     } catch (error) {
       console.error("Erreur lors de l'export des données:", error)
+      alert("Erreur lors de l'export des données")
     } finally {
-      setLoading(false)
+      setExportLoading(false)
     }
   }
 
@@ -147,11 +201,20 @@ export function DataTable({
         <Button
           variant="outline"
           onClick={exportToCSV}
-          disabled={totalItems === 0 || loading}
+          disabled={totalItems === 0 || exportLoading}
           className="border-indigo-200 text-indigo-600 hover:bg-indigo-50"
         >
-          <DownloadIcon className="h-4 w-4 mr-2" />
-          Exporter CSV
+          {exportLoading ? (
+            <>
+              <RefreshCwIcon className="h-4 w-4 mr-2 animate-spin" />
+              Export en cours...
+            </>
+          ) : (
+            <>
+              <DownloadIcon className="h-4 w-4 mr-2" />
+              Exporter CSV
+            </>
+          )}
         </Button>
       </div>
 
@@ -182,6 +245,11 @@ export function DataTable({
                       <RefreshCwIcon className="h-6 w-6 animate-spin mx-auto text-indigo-500" />
                       <p className="mt-2 text-indigo-500 flex items-center">
                         Chargement des données
+                        <span className="ml-1 inline-flex">
+                          <span className="animate-bounce mx-0.5 delay-100">.</span>
+                          <span className="animate-bounce mx-0.5 delay-200">.</span>
+                          <span className="animate-bounce mx-0.5 delay-300">.</span>
+                        </span>
                       </p>
                     </div>
                   </TableCell>
@@ -189,7 +257,7 @@ export function DataTable({
               ) : data.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={columns.length} className="text-center py-8 text-gray-500">
-                    Aucune donnée trouvée
+                    Aucune donnée trouvée pour les critères sélectionnés
                   </TableCell>
                 </TableRow>
               ) : (

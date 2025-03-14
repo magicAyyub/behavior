@@ -228,7 +228,7 @@ export const getDistributionData = async (field: string, params: FilterParams): 
     return await response.json()
   } catch (error) {
     console.error("Erreur lors de la récupération de la distribution:", error)
-    throw error
+    return [] // Retourner un tableau vide en cas d'erreur pour éviter les erreurs d'affichage
   }
 }
 
@@ -251,6 +251,36 @@ export const getStatsData = async (params: FilterParams): Promise<any> => {
     return await response.json()
   } catch (error) {
     console.error("Erreur lors de la récupération des statistiques:", error)
+    // Retourner des valeurs par défaut en cas d'erreur
+    return {
+      total_entries: 0,
+      unique_files: 0,
+      latest_entry: null,
+      unique_sources: 0,
+    }
+  }
+}
+
+// Nouvelle fonction pour exporter toutes les données
+export const exportAllDataToCSV = async (params: FilterParams): Promise<any[]> => {
+  try {
+    const queryParams = new URLSearchParams()
+
+    if (params.search) queryParams.append("search", params.search)
+    if (params.fileName && params.fileName !== "all") queryParams.append("file_name", params.fileName)
+    if (params.dateFrom) queryParams.append("date_from", params.dateFrom)
+    if (params.dateTo) queryParams.append("date_to", params.dateTo)
+
+    const response = await fetch(`${API_BASE_URL}file-data/export?${queryParams}`)
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.detail || "Erreur lors de l'export des données")
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error("Erreur lors de l'export des données:", error)
     throw error
   }
 }

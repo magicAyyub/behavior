@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { DistributionDataPoint } from "../api-service"
@@ -9,11 +8,11 @@ import { RefreshCwIcon } from "lucide-react"
 interface DistributionChartProps {
   data: DistributionDataPoint[]
   loading: boolean
+  distributionField: string
+  onFieldChange: (field: string) => void
 }
 
-export function DistributionChart({ data, loading }: DistributionChartProps) {
-  const [distributionField, setDistributionField] = useState<string>("etat")
-
+export function DistributionChart({ data, loading, distributionField, onFieldChange }: DistributionChartProps) {
   // Calculer la valeur maximale pour les barres
   const maxCount = Math.max(...data.map((d) => d.count), 0)
 
@@ -40,7 +39,7 @@ export function DistributionChart({ data, loading }: DistributionChartProps) {
       <CardHeader className="pb-2">
         <div className="flex justify-between items-center">
           <CardTitle className="text-lg text-indigo-700">Distribution par catégorie</CardTitle>
-          <Select value={distributionField} onValueChange={setDistributionField}>
+          <Select value={distributionField} onValueChange={onFieldChange}>
             <SelectTrigger className="w-[180px] border-indigo-200">
               <SelectValue placeholder="Champ" />
             </SelectTrigger>
@@ -67,7 +66,7 @@ export function DistributionChart({ data, loading }: DistributionChartProps) {
           </div>
         ) : data.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64">
-            <p className="text-gray-500">Aucune donnée disponible</p>
+            <p className="text-gray-500">Aucune donnée disponible pour cette sélection</p>
           </div>
         ) : (
           <div className="space-y-4 mt-4">

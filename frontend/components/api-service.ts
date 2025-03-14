@@ -218,10 +218,7 @@ export const getDistributionData = async (field: string, params: FilterParams): 
     if (params.dateFrom) queryParams.append("date_from", params.dateFrom)
     if (params.dateTo) queryParams.append("date_to", params.dateTo)
 
-    const response = await fetch(`${API_BASE_URL}file-data/distribution  params.dateTo)
-
-    const response = await fetch(\`${API_BASE_URL}file-data/distribution?${queryParams}`)
-
+    const response = await fetch(`${API_BASE_URL}file-data/distribution?${queryParams}`)
     if (!response.ok) {
       const errorData = await response.json()
       throw new Error(errorData.detail || "Erreur lors de la récupération de la distribution")

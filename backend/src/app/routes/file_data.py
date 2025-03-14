@@ -16,7 +16,10 @@ from src.utils.schema import (
     PaginatedResponse
 )
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/api/file-data",
+    tags=["Données de fichier"]
+)
 
 
 @router.post("/", response_model=List[FileDataResponse])

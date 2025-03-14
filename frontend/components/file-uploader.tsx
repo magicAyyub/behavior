@@ -18,6 +18,7 @@ import {
   DatabaseIcon,
   SaveIcon,
   BarChartIcon,
+  FileCog
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -554,12 +555,13 @@ export function FileUploader() {
         <Card className="border-t-4 border-t-indigo-500 shadow-md">
           <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50">
             <CardTitle className="flex items-center gap-2 text-indigo-700">
-              <FileTextIcon className="h-6 w-6 text-indigo-500" />
-              Transformation et chargement des Données
+              <FileCog className="h-6 w-6 text-indigo-500" />
+              Transformation et chargement de données
             </CardTitle>
             <CardDescription className="text-indigo-500">
               Importez vos fichiers Excel ou CSV pour les convertir au format standardisé et les charger en base de données
             </CardDescription>
+
           </CardHeader>
           <CardContent className="pt-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
